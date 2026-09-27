@@ -151,6 +151,8 @@
               <textarea id="q-note" name="note" rows="4" placeholder="例如：出版社指定的體例、是否需要發票、預計印量……"></textarea>
             </label>
           </fieldset>
+          <!-- 防垃圾機器人：真人看不到這個欄位 -->
+          <label class="hp" aria-hidden="true">網站 <input type="text" id="q-website" name="website" tabindex="-1" autocomplete="off"></label>
           <p class="form-error" id="form-error" role="alert" hidden></p>
           <button type="submit" class="btn btn-primary btn-lg" id="q-submit">送出委託</button>
         </form>

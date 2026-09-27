@@ -42,16 +42,18 @@
       .sort((a, b) => a.s - b.s);
     confirmed = projects.filter((p) => !p.tentative);
   }
-  // 有設定後台就從 Google 試算表讀檔期，失敗時退回 config 裡的 projects
+  // 網站架在 Cloudflare 上時，檔期從後台資料庫讀取；直接開 index.html 預覽時用 config 裡的範例
+  const API = 'api';
+  const HAS_API = location.protocol.startsWith('http');
   async function loadProjects() {
-    if (!C.site.backendUrl) return C.projects;
+    if (!HAS_API) return C.projects;
     try {
-      const res = await fetch(C.site.backendUrl);
+      const res = await fetch(API + '/projects');
       const data = await res.json();
       if (data.ok && Array.isArray(data.projects)) return data.projects;
       throw new Error('bad response');
     } catch (e) {
-      console.warn('檔期讀取失敗，改用 config.js 的 projects', e);
+      console.warn('檔期讀取失敗，改用 config.js 的範例 projects', e);
       return C.projects;
     }
   }
@@ -159,7 +161,7 @@
     $('#process').innerHTML = C.rules.process.map((p) => `<li><b>${esc(p.title)}</b><span>${esc(p.text)}</span></li>`).join('');
     $('#terms').innerHTML = C.rules.terms.map((t) => `<div><h3>${esc(t.title)}</h3><ul>${t.items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('');
 
-    $('#footer').innerHTML = `<span>© ${new Date().getFullYear()} ${esc(C.site.owner)}</span><span>聯絡：<span class="mono">${esc(C.site.email)}</span></span><span>線上試算僅供參考，正式金額以回覆的報價為準。</span>`;
+    $('#footer').innerHTML = `<span>© ${new Date().getFullYear()} ${esc(C.site.owner)}</span><span>聯絡：<span class="mono">${esc(C.site.email)}</span></span><span>線上試算僅供參考，正式金額以回覆的報價為準。</span><a class="admin-link" href="admin.html">工作室後台</a>`;
   }
 
   /* =====================================================================
@@ -575,33 +577,23 @@
     $('#summary-text').textContent = summary;
     const btn = $('#q-submit');
 
-    if (C.site.backendUrl || C.site.formEndpoint) {
+    if (HAS_API) {
       btn.disabled = true;
       btn.textContent = '送出中…';
       try {
-        let res;
-        if (C.site.backendUrl) {
-          // Apps Script 不接受 JSON 標頭的跨網域預檢，所以用 text/plain 傳 JSON 字串
-          res = await fetch(C.site.backendUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({
-              name: q.name, email: q.email, contact: q.contact, project: q.project, link: q.link, note: q.note,
-              services: [...new Set(r.lines.map((l) => S[l.svc].short))].join('、'),
-              total: r.total, days: r.days, start: iso(r.start), deadline: q.deadline ? iso(q.deadline) : '',
-              verdict: r.verdict.title, message: summary
-            })
-          });
-          const data = await res.json();
-          if (!data.ok) throw new Error(data.error);
-        } else {
-          res = await fetch(C.site.formEndpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify({ name: q.name, email: q.email, _replyto: q.email, _subject: `委託試算：${q.project || q.name}（${money(r.total)}）`, total: r.total, message: summary })
-          });
-          if (!res.ok) throw new Error(res.status);
-        }
+        const res = await fetch(API + '/requests', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: q.name, email: q.email, contact: q.contact, project: q.project, link: q.link, note: q.note,
+            services: [...new Set(r.lines.map((l) => S[l.svc].short))].join('、'),
+            total: r.total, days: r.days, start: iso(r.start), deadline: q.deadline ? iso(q.deadline) : '',
+            verdict: r.verdict.title, message: summary,
+            website: $('#q-website').value
+          })
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error);
         showSubmitted('已送出', `謝謝你！我會在 2 個工作天內回信到 ${q.email}。下面是這次送出的內容，可以留著對照。`);
       } catch (ex) {
         showSubmitted('送出失敗', `表單沒有送出成功。請按「複製委託內容」，寄到 ${C.site.email}，我一樣會處理。`);
@@ -762,12 +754,12 @@
   /* ---------- boot ---------- */
   renderRules();
   initPortfolio();
-  setProjects(C.site.backendUrl ? [] : C.projects);
+  setProjects(HAS_API ? [] : C.projects);
   initQuote();
   initSchedule();
   window.addEventListener('hashchange', route);
   route();
-  if (C.site.backendUrl) {
+  if (HAS_API) {
     $('#availability').innerHTML = '<div class="availability-card"><p>讀取檔期中…</p></div>';
     loadProjects().then((list) => {
       setProjects(list);

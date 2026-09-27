@@ -1,0 +1,10 @@
+{
+  "name": "krystal-studio",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler pages dev public --d1 DB=krystal-studio --binding ADMIN_PASSWORD=dev-password"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

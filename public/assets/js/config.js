@@ -5,7 +5,7 @@
  * - capacity  ：產能設定（同時可接幾件、休假日）
  * - pricing   ：收費標準（規則頁與試算表單共用，改一次兩邊同步）
  * - rules     ：合作流程與條款文字
- * - projects  ：行事曆上的工作區塊（新委託成立時在這裡加一筆）
+ * - projects  ：直接打開 index.html 預覽時用的範例檔期（上線後改在後台 admin.html 管理）
  * - portfolio ：作品集內容
  * 日期一律寫成 'YYYY-MM-DD'。
  * ===================================================================== */
@@ -15,14 +15,7 @@ window.SITE_CONFIG = {
     owner: 'Krystal Hsuan',
     tagline: '書籍排版・校對・翻譯，從原稿到可以付印的檔案。',
     email: 'your-email@example.com',
-    line: '',
-    // 後台網址：Google Apps Script 部署後拿到的網址（結尾是 /exec），設定步驟見 README。
-    // 設定後：委託會寫進你的 Google 試算表並寄信通知你，行事曆改讀試算表的「檔期」分頁，
-    //         下面的 projects 就不再使用。
-    backendUrl: '',
-    // 不想用試算表、只想收信的話，也可以填 Formspree 網址（https://formspree.io）。
-    // 兩個都留空時，案主送出後會看到「複製委託內容」與你的 Email，改由他們自己寄信。
-    formEndpoint: ''
+    line: ''
   },
 
   // 規則頁上的「關於我」
@@ -157,7 +150,8 @@ window.SITE_CONFIG = {
     ]
   },
 
-  /* 行事曆的工作區塊 ----------------------------------------------------
+  /* 範例檔期 --------------------------------------------------------------
+   * 上線後的檔期在後台（網址/admin.html）管理，這裡只在「直接打開 index.html 預覽」時使用。
    * client  ：對外顯示的名稱，建議用「案主A」之類的代稱
    * service ：layout / proofread / translate
    * start   ：開始工作日；end：案主給的截稿日
