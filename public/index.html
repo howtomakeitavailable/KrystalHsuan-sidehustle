@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Krystal 書頁工作室</title>
+<meta name="description" content="校對、實體書內頁排版、電子書 EPUB 接案：委託說明、價目表、作品集、線上委託單與檔期行事曆。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@400;700&display=swap">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <a class="brand" href="#rules">
+      <span class="brand-mark" aria-hidden="true">書</span>
+      <span class="brand-text">
+        <strong id="brand-name">書頁工作室</strong>
+        <small>校對・排版・EPUB・翻譯</small>
+      </span>
+    </a>
+    <nav class="nav" aria-label="主要頁面">
+      <a href="#rules" data-view="rules"><span>委託說明與價目</span><small>原則、價目表、流程</small></a>
+      <a href="#portfolio" data-view="portfolio"><span>作品集</span><small>文件檢視／翻頁檢視</small></a>
+      <a href="#quote" data-view="quote"><span>委託單</span><small>填單當場看價格</small></a>
+      <a href="#schedule" data-view="schedule"><span>檔期行事曆</span><small>目前手上的案子</small></a>
+    </nav>
+    <div class="availability" id="availability" aria-live="polite"></div>
+  </aside>
+
+  <main class="main">
+    <!-- 1. 收費與規則 -->
+    <section class="view" id="view-rules" data-view="rules">
+      <header class="view-head">
+        <p class="eyebrow">委託說明與價目</p>
+        <h1 id="rules-title">校對・排版委託</h1>
+        <p class="lede" id="rules-tagline"></p>
+      </header>
+      <div class="service-cards" id="service-cards"></div>
+      <dl class="intro-facts" id="intro-facts"></dl>
+
+      <section class="about" id="about" aria-label="關於我"></section>
+
+      <h2 class="section-title">校稿原則</h2>
+      <ol class="principles" id="principles"></ol>
+
+      <h2 class="section-title">價目表</h2>
+      <p class="section-note">一律以字數計價，只排版也一樣。排版與加購以基本費的百分比計算，急件以總額計算。</p>
+      <div class="price-modes" id="price-tables"></div>
+      <p class="section-note" id="price-footnote"></p>
+
+      <h2 class="section-title">交件後的其他加價</h2>
+      <div class="table-wrap"><table class="plain-table" id="extra-fees"></table></div>
+
+      <h2 class="section-title">流程</h2>
+      <div class="processes" id="processes"></div>
+
+      <div class="cta-band">
+        <p>知道大概的字數，就可以先試算。</p>
+        <a class="btn btn-primary" href="#quote">填委託單</a>
+      </div>
+    </section>
+
+    <!-- 2. 作品集 -->
+    <section class="view" id="view-portfolio" data-view="portfolio" hidden>
+      <header class="view-head">
+        <p class="eyebrow">作品集</p>
+        <h1>翻開來看看</h1>
+        <p class="lede">選一本作品，用文件檢視看版面細節與校對修訂，或用翻頁檢視看成書的樣子。</p>
+      </header>
+      <div class="pf-controls">
+        <div class="pf-works" id="pf-works" role="tablist" aria-label="選擇作品"></div>
+        <div class="segmented" role="group" aria-label="檢視方式">
+          <button type="button" id="mode-doc" class="is-on" aria-pressed="true">文件檢視</button>
+          <button type="button" id="mode-flip" aria-pressed="false">翻頁檢視</button>
+        </div>
+      </div>
+      <p class="pf-meta" id="pf-meta"></p>
+
+      <div class="docview" id="docview">
+        <div class="doc-ribbon">
+          <div class="doc-tabs" aria-hidden="true"><span>檔案</span><span class="on">常用</span><span>插入</span><span>版面配置</span><span>參考資料</span><span>校閱</span><span>檢視</span></div>
+          <div class="doc-tools">
+            <label class="doc-check"><input type="checkbox" id="doc-track" checked> 顯示修訂</label>
+            <label class="doc-zoom">縮放 <input type="range" id="doc-zoom" min="60" max="140" step="10" value="100"> <output id="doc-zoom-out">100%</output></label>
+          </div>
+        </div>
+        <div class="doc-ruler" id="doc-ruler" aria-hidden="true"></div>
+        <div class="doc-canvas" id="doc-canvas"></div>
+        <div class="doc-status" id="doc-status"></div>
+      </div>
+
+      <div class="flipview" id="flipview" hidden>
+        <div class="flip-stage" id="flip-stage">
+          <div class="book" id="book"></div>
+        </div>
+        <div class="flip-controls">
+          <button type="button" class="btn" id="flip-prev" aria-label="上一頁">‹ 上一頁</button>
+          <span class="flip-count" id="flip-count"></span>
+          <button type="button" class="btn" id="flip-next" aria-label="下一頁">下一頁 ›</button>
+        </div>
+        <p class="hint">點書頁或按鍵盤左右鍵翻頁。</p>
+      </div>
+    </section>
+
+    <!-- 3. 委託試算 -->
+    <section class="view" id="view-quote" data-view="quote" hidden>
+      <header class="view-head">
+        <p class="eyebrow">委託單</p>
+        <h1>填單，當場看到價格</h1>
+        <p class="lede">填入字數、選好服務，右邊會依價目表即時算出金額、訂金，以及是不是急件。欄位裡的數字是範例，請改成你的作品。</p>
+      </header>
+      <div class="quote-layout">
+        <form class="quote-form" id="quote-form" novalidate>
+          <div class="quote-fields" id="quote-fields"></div>
+          <!-- 防垃圾機器人：真人看不到這個欄位 -->
+          <label class="hp" aria-hidden="true">網站 <input type="text" id="q-website" name="website" tabindex="-1" autocomplete="off"></label>
+          <p class="form-error" id="form-error" role="alert" hidden></p>
+          <button type="submit" class="btn btn-primary btn-lg" id="q-submit">送出委託</button>
+        </form>
+
+        <aside class="estimate" id="estimate" aria-live="polite">
+          <div class="estimate-inner" id="estimate-inner"></div>
+        </aside>
+      </div>
+
+      <div class="submitted" id="submitted" hidden>
+        <h2 id="submitted-title">已送出</h2>
+        <p id="submitted-text"></p>
+        <pre class="summary" id="summary-text" tabindex="0"></pre>
+        <div class="submitted-actions">
+          <button type="button" class="btn btn-primary" id="copy-summary">複製委託內容</button>
+          <button type="button" class="btn" id="back-to-form">回到表單</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. 檔期行事曆 -->
+    <section class="view" id="view-schedule" data-view="schedule" hidden>
+      <header class="view-head">
+        <p class="eyebrow">檔期行事曆</p>
+        <h1>我現在手上有什麼</h1>
+        <p class="lede">每一塊是一件委託，從開工日排到截稿日。虛線表示還在洽談、尚未確定。</p>
+      </header>
+      <div class="sched-summary" id="sched-summary"></div>
+      <div class="sched-bar">
+        <div class="segmented" role="group" aria-label="檢視方式">
+          <button type="button" id="sched-timeline" class="is-on" aria-pressed="true">時間軸</button>
+          <button type="button" id="sched-month" aria-pressed="false">月曆</button>
+        </div>
+        <div class="legend" id="legend"></div>
+      </div>
+      <div class="timeline-wrap" id="timeline-wrap"><div class="timeline" id="timeline"></div></div>
+      <div class="month" id="month" hidden>
+        <div class="month-head">
+          <button type="button" class="btn btn-icon" id="month-prev" aria-label="上個月">‹</button>
+          <h3 id="month-title"></h3>
+          <button type="button" class="btn btn-icon" id="month-next" aria-label="下個月">›</button>
+        </div>
+        <div class="month-grid" id="month-grid"></div>
+      </div>
+      <h2 class="section-title">案件列表</h2>
+      <div class="table-wrap"><table class="proj-table" id="proj-table"></table></div>
+    </section>
+
+    <footer class="footer" id="footer"></footer>
+  </main>
+</div>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
