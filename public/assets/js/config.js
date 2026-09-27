@@ -47,30 +47,35 @@ window.SITE_CONFIG = {
   pricing: {
     currency: 'NT$',
     depositRate: 0.5,              // 訂金比例
-    minWords: 5000,                // 價目表從 5,000 字起算；未滿 5,000 字以 5,000 字計
+    minimumFee: 500,               // 單筆最低收費
     tableWords: [5000, 10000, 50000, 100000],   // 規則頁價目表列出的字數
 
-    // 兩套計價方式：基本費 =（字數 + add）× multiply ÷ divide，四捨五入
-    // 加價項目都是「基本費的百分比」
+    // 案主可選：校對 / 校對＋排版 / 排版（無校對）
+    // 有校對（含校對＋排版）用 proofread 公式；只排版用 none 公式。
+    // 基本費 =（字數 + add）× multiply ÷ divide，四捨五入。
+    // 排版、EPUB、代印、全包都是「基本費的百分比」；EPUB、代印、拆本只能搭配排版。
     modes: {
       proofread: {
-        label: '校對服務',
+        label: '校對',
         formula: { add: 5000, multiply: 5, divide: 100 },
         formulaText: '5 ×（字數 + 5,000）÷ 100',
-        extras: { layout: 0.4, epub: 0.25, print: 0.4 },
-        bundle: { items: ['layout', 'epub', 'print'], rate: 0.6 },     // 以上全包
-        rush: { rate: 0.5, days: 14, text: '兩週內要交稿' }
+        layout: 0.4,                                   // 校對＋排版：排版 +40%
+        extras: { epub: 0.25, print: 0.4 },
+        bundle: { items: ['epub', 'print'], rate: 0.6 },  // 以上全包：排版＋EPUB＋代印 共 +60%
+        rush: { days: 14, text: '兩週內要交稿' }
       },
       none: {
-        label: '無校對服務',
+        label: '排版（無校對）',
         formula: { add: 7000, multiply: 1, divide: 25 },
         formulaText: '（字數 + 7,000）÷ 25',
-        extras: { layout: 0.6, epub: 0.25, print: 0.4 },
-        bundle: { items: ['layout', 'epub'], rate: 0.7 },              // 以上全包（不含代印）
-        volumeFee: 150,            // 實體書拆成 1 本以上：每多 1 本加收
-        rush: { rate: 0.5, perWords: 80000, days: 10, text: '每 8 萬字工期 10 天內' }
+        layout: 0.6,                                   // 排版 +60%
+        extras: { epub: 0.25, print: 0.4 },
+        bundle: { items: ['epub'], rate: 0.7 },        // 以上全包：排版＋EPUB 共 +70%（代印另計）
+        rush: { perWords: 80000, days: 10, text: '每 8 萬字工期 10 天內' }
       }
     },
+    rushRate: 0.5,                 // 急件：加收總額的 50%
+    volumeFee: { first: 150, each: 100 },   // 拆成 2 本以上：第一本 +150，第二本起每本 +100
     printCap: 1000,                // 代印服務每件作品最多收
     printVendors: { north: '千業印刷', other: '樺舍印前' },
 

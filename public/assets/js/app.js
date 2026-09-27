@@ -12,8 +12,9 @@
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const fmtNum = (n) => Math.round(n).toLocaleString('zh-TW');
   const money = (n) => P.currency + fmtNum(n);
-  // 基本費 =（字數 + add）× multiply ÷ divide，四捨五入；未滿最低字數以最低字數計
-  const baseFor = (mode, words) => { const f = mode.formula; return Math.round((Math.max(words, P.minWords) + f.add) * f.multiply / f.divide); };
+  // 基本費 =（字數 + add）× multiply ÷ divide，四捨五入
+  const baseFor = (mode, words) => { const f = mode.formula; return Math.round((words + f.add) * f.multiply / f.divide); };
+  const volumeFee = (n) => (n > 1 ? P.volumeFee.first + P.volumeFee.each * (n - 1) : 0);
   const pct = (r) => Math.round(r * 100) + '%';
   const svcColor = (key) => `var(--svc-${key})`;
 
@@ -106,11 +107,13 @@
     $('#rules-tagline').textContent = C.site.tagline;
     const R = C.rules, M = P.modes;
 
-    const minBase = { proofread: baseFor(M.proofread, P.minWords), none: baseFor(M.none, P.minWords) };
+    // 5,000 字時的起價
+    const w0 = P.tableWords[0];
+    const pb = baseFor(M.proofread, w0), nb = baseFor(M.none, w0);
     const from = {
-      proofread: `<b>${money(minBase.proofread)}</b> 起`,
-      layout: `無校對 <b>${money(minBase.none * (1 + M.none.extras.layout))}</b> 起<br><small>搭配校對 +${pct(M.proofread.extras.layout)}</small>`,
-      epub: `無校對 <b>${money(minBase.none * (1 + M.none.extras.epub))}</b> 起<br><small>搭配校對 +${pct(M.proofread.extras.epub)}</small>`
+      proofread: `<b>${money(Math.max(pb, P.minimumFee))}</b> 起`,
+      layout: `只排版 <b>${money(nb + Math.round(nb * M.none.layout))}</b> 起<br><small>接在校對後 +${pct(M.proofread.layout)}</small>`,
+      epub: `搭配排版 <b>+${pct(M.none.extras.epub)}</b><br><small>以基本費計</small>`
     };
     $('#service-cards').innerHTML = SVC_KEYS.map((k) => `
       <article class="svc-card" style="--c:${svcColor(k)}">
@@ -136,33 +139,33 @@
 
     // 價目表：兩套公式各一張
     const tw = P.tableWords;
-    const modeBlock = (key, color) => {
+    const vol = `第一本 +${money(P.volumeFee.first)}，第二本起每本 +${money(P.volumeFee.each)}`;
+    const modeBlock = (key, title, color) => {
       const m = M[key];
       const ranges = tw.slice(0, -1).map((w, i) => `<tr><td class="num">${fmtNum(w)}～${fmtNum(tw[i + 1])} 字</td><td class="r num">${money(baseFor(m, w))}～${money(baseFor(m, tw[i + 1]))}</td></tr>`).join('');
-      const extra = (k) => `<tr><td>${esc(S[k].name)}</td><td class="r num">+${pct(m.extras[k])}${k === 'print' ? `<span class="sub">每件作品最多 ${money(P.printCap)}</span>` : ''}</td></tr>`;
-      const inBundle = m.bundle ? m.bundle.items : [];
+      const extra = (k) => `<tr><td class="indent">${esc(S[k].name)}</td><td class="r num">+${pct(m.extras[k])}${k === 'print' ? `<span class="sub">每件作品最多 ${money(P.printCap)}</span>` : ''}</td></tr>`;
+      const items = m.bundle.items;
       const rows = [
-        extra('layout'),
-        m.volumeFee ? `<tr><td class="indent">拆成 1 本以上</td><td class="r num">每多 1 本 +${money(m.volumeFee)}</td></tr>` : '',
-        extra('epub'),
-        inBundle.includes('print') ? extra('print') : '',
-        m.bundle ? `<tr><td>以上全包<span class="sub">${inBundle.map((k) => S[k].short).join('＋')}</span></td><td class="r num">+${pct(m.bundle.rate)}</td></tr>` : '',
-        inBundle.includes('print') ? '' : extra('print'),
-        `<tr class="rush"><td>急件<span class="sub">${esc(m.rush.text)}</span></td><td class="r num">+${pct(m.rush.rate)}</td></tr>`
+        `<tr><td>${esc(S.layout.name)}<span class="sub">${key === 'proofread' ? '校對＋排版時加收' : '必選'}</span></td><td class="r num">+${pct(m.layout)}</td></tr>`,
+        `<tr><td class="indent">拆成 2 本以上</td><td class="r num">${vol}</td></tr>`,
+        ...['epub', 'print'].filter((k) => items.includes(k)).map(extra),
+        `<tr><td class="indent">以上全包<span class="sub">${[S.layout.short, ...items.map((k) => S[k].short)].join('＋')}</span></td><td class="r num">共 +${pct(m.bundle.rate)}</td></tr>`,
+        ...['epub', 'print'].filter((k) => !items.includes(k)).map(extra),
+        `<tr class="rush"><td>急件<span class="sub">${esc(m.rush.text)}</span></td><td class="r num">總額 +${pct(P.rushRate)}</td></tr>`
       ].join('');
       return `<section class="price-mode" style="--c:${color}">
-        <h3>${esc(m.label)}</h3>
+        <h3>${title}</h3>
         <p class="formula">基本費 = <span class="num">${esc(m.formulaText)}</span><small>四捨五入</small></p>
         <div class="table-wrap"><table>
           <thead><tr><th>字數</th><th class="r">基本費</th></tr></thead><tbody>${ranges}</tbody>
         </table></div>
         <div class="table-wrap"><table>
-          <thead><tr><th>額外服務</th><th class="r">以基本費計</th></tr></thead><tbody>${rows}</tbody>
+          <thead><tr><th>排版與加購</th><th class="r">以基本費計</th></tr></thead><tbody>${rows}</tbody>
         </table></div>
       </section>`;
     };
-    $('#price-tables').innerHTML = modeBlock('proofread', svcColor('proofread')) + modeBlock('none', svcColor('layout'));
-    $('#price-footnote').textContent = `代印廠商：北北基客戶 ${P.printVendors.north}／其他縣市客戶 ${P.printVendors.other}。訂金 ${pct(P.depositRate)}，收到後開始工作。`;
+    $('#price-tables').innerHTML = modeBlock('proofread', '校對／校對＋排版', svcColor('proofread')) + modeBlock('none', '只排版（無校對）', svcColor('layout'));
+    $('#price-footnote').textContent = `EPUB、代印、拆本都要搭配排版。單筆最低 ${money(P.minimumFee)}。代印廠商：北北基客戶 ${P.printVendors.north}／其他縣市客戶 ${P.printVendors.other}。訂金 ${pct(P.depositRate)}，收到後開始工作。`;
 
     $('#extra-fees').innerHTML = `<tbody>${R.extraFees.map(([k, v]) => `<tr><td>${esc(k)}</td><td class="r">${esc(v)}</td></tr>`).join('')}</tbody>`;
 
@@ -377,8 +380,13 @@
   /* =====================================================================
    * 3. 委託試算
    * ===================================================================== */
-  const EXTRA_KEYS = ['layout', 'epub', 'print'];
-  const DEFAULTS = { words: 60000, mode: 'proofread', extras: ['layout'], volumes: 1, region: 'north' };
+  const EXTRA_KEYS = ['epub', 'print'];          // 只能搭配排版的服務
+  const SERVICE_CHOICES = {
+    proofread: { label: '校對', desc: '只校對，不排版', mode: 'proofread', layout: false },
+    both:      { label: '校對＋排版', desc: '校對完直接排版', mode: 'proofread', layout: true },
+    layout:    { label: '排版', desc: '稿件已經校對好，只需要排版', mode: 'none', layout: true }
+  };
+  const DEFAULTS = { words: 60000, service: 'both', extras: [], volumes: 1, region: 'north' };
 
   function choice(name, id, label, desc, extra, checked, type = 'radio') {
     return `<label class="choice"><input type="${type}" name="${name}" value="${esc(id)}" id="${name}-${esc(id)}"${checked ? ' checked' : ''}>
@@ -398,13 +406,15 @@
         <legend>服務內容</legend>
         <label class="field">總字數
           <span class="input-unit"><input type="number" id="q-words" min="1" step="1000" value="${d.words}" inputmode="numeric"><span>字</span></span>
-          <small>以 Word「字數統計」的字數為準。純排版、純 EPUB 也以字數計價。</small>
+          <small>以 Word「字數統計」的字數為準。只排版也以字數計價。</small>
         </label>
-        <div><div class="group-label">需要校對嗎？</div><div class="choices">
-          ${choice('q-mode', 'proofread', '需要校對', `基本費 ${P.modes.proofread.formulaText}`, null, d.mode === 'proofread')}
-          ${choice('q-mode', 'none', '不需要校對', `基本費 ${P.modes.none.formulaText}`, null, d.mode === 'none')}
+        <div><div class="group-label">服務</div><div class="choices">
+          ${Object.entries(SERVICE_CHOICES).map(([k, c]) => {
+            const m = P.modes[c.mode];
+            return choice('q-service', k, c.label, c.desc, `基本費 ${m.formulaText}${c.layout ? `＋排版 ${pct(m.layout)}` : ''}`, d.service === k);
+          }).join('')}
         </div></div>
-        <div><div class="group-label">額外服務</div><div class="choices">
+        <div id="layout-extras"><div class="group-label">搭配排版的服務</div><div class="choices">
           ${EXTRA_KEYS.map((k) => choice('q-extra', k, S[k].name, S[k].intro, '', d.extras.includes(k), 'checkbox')).join('')}
         </div></div>
         <label class="field" id="vol-field">要拆成幾本
@@ -483,7 +493,7 @@
     const extras = Object.fromEntries(EXTRA_KEYS.map((k) => [k, !!f.querySelector(`input[name="q-extra"][value="${k}"]:checked`)]));
     return {
       words: Math.max(0, Math.round(Number($('#q-words').value) || 0)),
-      mode: radio('q-mode') || 'proofread',
+      service: radio('q-service') || 'both',
       extras,
       volumes: Math.max(1, Math.round(Number($('#q-volumes').value) || 1)),
       region: radio('q-region') || 'north',
@@ -507,36 +517,39 @@
   }
 
   function calculate(q) {
-    const mode = P.modes[q.mode];
+    const choiceOf = SERVICE_CHOICES[q.service];
+    const mode = P.modes[choiceOf.mode];
     const lines = [];
     const problems = [];
-    const hasService = q.mode === 'proofread' || q.extras.layout || q.extras.epub;
     if (!q.words) problems.push('請填總字數');
-    else if (!hasService) problems.push('不需要校對的話，請至少選「實體書內頁排版」或「電子書 EPUB」');
     if (problems.length) return { lines, problems };
 
-    const counted = Math.max(q.words, P.minWords);
     const base = baseFor(mode, q.words);
-    lines.push({
-      label: q.mode === 'proofread' ? '校對（基本費）' : '基本費（無校對）',
-      detail: `${mode.formulaText}，${fmtNum(counted)} 字${q.words < P.minWords ? `（未滿 ${fmtNum(P.minWords)} 字以 ${fmtNum(P.minWords)} 字計）` : ''}`,
-      amount: base
-    });
+    lines.push({ label: choiceOf.mode === 'proofread' ? '校對（基本費）' : '基本費', detail: `${mode.formulaText}，${fmtNum(q.words)} 字`, amount: base });
 
-    const chosen = EXTRA_KEYS.filter((k) => q.extras[k]);
-    const bundle = mode.bundle && mode.bundle.items.every((k) => chosen.includes(k)) ? mode.bundle : null;
-    if (bundle) {
-      lines.push({ label: '以上全包', detail: `${bundle.items.map((k) => S[k].name).join('＋')}，基本費 × ${pct(bundle.rate)}`, amount: Math.round(base * bundle.rate) });
+    if (choiceOf.layout) {
+      const chosen = EXTRA_KEYS.filter((k) => q.extras[k]);
+      const bundle = mode.bundle && mode.bundle.items.every((k) => chosen.includes(k)) ? mode.bundle : null;
+      if (bundle) {
+        const names = [S.layout.short, ...bundle.items.map((k) => S[k].short)].join('＋');
+        lines.push({ label: '以上全包', detail: `${names}，基本費 × ${pct(bundle.rate)}`, amount: Math.round(base * bundle.rate) });
+      } else {
+        lines.push({ label: S.layout.name, detail: `基本費 × ${pct(mode.layout)}`, amount: Math.round(base * mode.layout) });
+      }
+      chosen.filter((k) => !bundle || !bundle.items.includes(k)).forEach((k) => {
+        let amt = Math.round(base * mode.extras[k]);
+        const capped = k === 'print' && amt > P.printCap;
+        if (capped) amt = P.printCap;
+        lines.push({ label: S[k].name, detail: `基本費 × ${pct(mode.extras[k])}${capped ? `（上限 ${money(P.printCap)}）` : ''}`, amount: amt });
+      });
+      if (q.volumes > 1) {
+        lines.push({ label: `拆成 ${q.volumes} 本`, detail: `第一本 +${money(P.volumeFee.first)}，第二本起每本 +${money(P.volumeFee.each)}`, amount: volumeFee(q.volumes) });
+      }
     }
-    chosen.filter((k) => !bundle || !bundle.items.includes(k)).forEach((k) => {
-      let amt = Math.round(base * mode.extras[k]);
-      const capped = k === 'print' && amt > P.printCap;
-      if (capped) amt = P.printCap;
-      lines.push({ label: S[k].name, detail: `基本費 × ${pct(mode.extras[k])}${capped ? `（上限 ${money(P.printCap)}）` : ''}`, amount: amt });
-    });
-    if (mode.volumeFee && q.extras.layout && q.volumes > 1) {
-      lines.push({ label: `拆成 ${q.volumes} 本`, detail: `每多 1 本 +${money(mode.volumeFee)}`, amount: (q.volumes - 1) * mode.volumeFee });
-    }
+
+    const sub = lines.reduce((s2, l) => s2 + l.amount, 0);
+    if (sub < P.minimumFee) lines.push({ label: '最低收費補足', detail: `單筆最低 ${money(P.minimumFee)}`, amount: P.minimumFee - sub });
+    const beforeRush = Math.max(sub, P.minimumFee);
 
     const t = today();
     const limit = rushDays(mode, q.words);
@@ -549,8 +562,8 @@
       if (left < 1) {
         verdict = { level: 'bad', title: '交稿日太近了', text: '請選明天以後的日期，或直接來信討論。' };
       } else if (left <= limit) {
-        lines.push({ label: '急件', detail: `${mode.rush.text}，基本費 × ${pct(mode.rush.rate)}`, amount: Math.round(base * mode.rush.rate), rush: true });
-        verdict = { level: 'warn', title: `急件：距離交稿 ${left} 天`, text: `${mode.rush.text}視為急件，加收基本費的 ${pct(mode.rush.rate)}。${mode.rush.perWords ? `${fmtNum(q.words)} 字的急件門檻是 ${limit} 天內。` : ''}` };
+        lines.push({ label: '急件', detail: `${mode.rush.text}，總額 × ${pct(P.rushRate)}`, amount: Math.round(beforeRush * P.rushRate), rush: true });
+        verdict = { level: 'warn', title: `急件：距離交稿 ${left} 天`, text: `${mode.rush.text}視為急件，加收總額的 ${pct(P.rushRate)}。${mode.rush.perWords ? `${fmtNum(q.words)} 字的急件門檻是 ${limit} 天內。` : ''}` };
       } else {
         verdict = { level: 'ok', title: `一般件：距離交稿 ${left} 天`, text: `${limit} 天以上不算急件。` };
       }
@@ -561,26 +574,29 @@
     const busy = overlapping(t, q.deadline || addDays(t, 30));
     if (loadOn(t) >= C.capacity.maxConcurrent) notes.push(`目前檔期已滿，最快 ${mdw(nextAvailable())} 可以開始。`);
 
-    const total = lines.reduce((s, l) => s + l.amount, 0);
-    return { lines, problems, base, total, deposit: Math.round(total * P.depositRate), verdict, notes, busy, mode };
+    const total = lines.reduce((s2, l) => s2 + l.amount, 0);
+    return { lines, problems, base, total, deposit: Math.round(total * P.depositRate), verdict, notes, busy, mode, choice: choiceOf };
   }
 
   let lastQuote = null;
   function renderEstimate() {
     const q = readForm();
-    const mode = P.modes[q.mode];
+    const c = SERVICE_CHOICES[q.service];
+    const mode = P.modes[c.mode];
     // 依選擇顯示／隱藏相關欄位
-    $('#vol-field').hidden = !q.extras.layout;
-    $('#region-field').hidden = !q.extras.print;
-    $('#spec-block').hidden = !q.extras.layout;
-    $('#habit-field').hidden = q.mode !== 'proofread';
-    $('#vol-hint').textContent = mode.volumeFee ? `每多 1 本 +${money(mode.volumeFee)}。` : '重新開版時會依本數計費，詳見排版流程。';
+    $('#layout-extras').hidden = !c.layout;
+    $('#vol-field').hidden = !c.layout;
+    $('#region-field').hidden = !c.layout || !q.extras.print;
+    $('#spec-block').hidden = !c.layout;
+    $('#habit-field').hidden = c.mode !== 'proofread';
+    $('#vol-hint').textContent = `拆成 2 本以上：第一本 +${money(P.volumeFee.first)}，第二本起每本 +${money(P.volumeFee.each)}。`;
     $$('.spec-other').forEach((inp) => { inp.hidden = (($(`input[name="${inp.id.replace(/-other$/, '')}"]:checked`) || {}).value) !== '其他'; });
     $$('input[name="q-extra"]').forEach((inp) => {
       const k = inp.value, r = mode.extras[k];
-      inp.closest('label').querySelector('.rate').textContent = `基本費 × ${pct(r)}${k === 'print' ? `，最多 ${money(P.printCap)}` : ''}`;
+      const inBundle = mode.bundle.items.includes(k) ? `（${mode.bundle.items.map((x) => S[x].short).join('、')}都選，連同排版算全包 ${pct(mode.bundle.rate)}）` : '';
+      inp.closest('label').querySelector('.rate').textContent = `基本費 × ${pct(r)}${k === 'print' ? `，最多 ${money(P.printCap)}` : ''}${inBundle}`;
     });
-    $('#deadline-hint').textContent = `${mode.rush.text}視為急件，加收基本費的 ${pct(mode.rush.rate)}。`;
+    $('#deadline-hint').textContent = `${mode.rush.text}視為急件，加收總額的 ${pct(P.rushRate)}。`;
 
     const r = calculate(q);
     lastQuote = { q, r };
@@ -591,7 +607,7 @@
     }
     const line = (cls, label, detail, amt) => `<div class="est-line ${cls}"><dt>${label}${detail ? `<small>${detail}</small>` : ''}</dt><dd>${amt}</dd></div>`;
     box.innerHTML = `
-      <div class="est-title">試算結果 <small>${esc(mode.label)}</small></div>
+      <div class="est-title">試算結果 <small>${esc(c.label)}</small></div>
       <dl class="est-lines">${r.lines.map((l) => line(l.rush ? 'plus' : '', esc(l.label), esc(l.detail), money(l.amount))).join('')}</dl>
       <div class="est-total"><span>預估總額</span><b>${money(r.total)}</b></div>
       <div class="est-sub"><span>開工前訂金 ${pct(P.depositRate)}</span><b>${money(r.deposit)}</b></div>
@@ -602,7 +618,8 @@
   }
 
   function servicesText(q) {
-    return [q.mode === 'proofread' ? '校對' : null, ...EXTRA_KEYS.filter((k) => q.extras[k]).map((k) => S[k].short)].filter(Boolean).join('、');
+    const c = SERVICE_CHOICES[q.service];
+    return [c.mode === 'proofread' ? '校對' : null, c.layout ? '排版' : null, ...(c.layout ? EXTRA_KEYS.filter((k) => q.extras[k]).map((k) => S[k].short) : [])].filter(Boolean).join('、');
   }
 
   function buildSummary({ q, r }) {
@@ -617,9 +634,10 @@
     if (q.project) L.push(`作品名稱：${q.project}`);
     if (q.types.length) L.push(`作品類型：${q.types.join('、')}`);
     L.push(`總字數：${fmtNum(q.words)} 字`);
-    L.push(`服務：${servicesText(q)}${q.extras.layout ? `（${q.volumes} 本）` : ''}${q.extras.print ? `，代印地區：${q.region === 'north' ? `北北基（${P.printVendors.north}）` : `其他縣市（${P.printVendors.other}）`}` : ''}`);
-    if (q.mode === 'proofread') L.push(`寫作習慣：${q.habits || '（未填，依校稿原則第 2～4 點）'}`);
-    if (q.extras.layout) {
+    const lay = SERVICE_CHOICES[q.service].layout;
+    L.push(`服務：${servicesText(q)}${lay ? `（${q.volumes} 本）` : ''}${lay && q.extras.print ? `，代印地區：${q.region === 'north' ? `北北基（${P.printVendors.north}）` : `其他縣市（${P.printVendors.other}）`}` : ''}`);
+    if (SERVICE_CHOICES[q.service].mode === 'proofread') L.push(`寫作習慣：${q.habits || '（未填，依校稿原則第 2～4 點）'}`);
+    if (lay) {
       L.push('');
       L.push('— 排版規格 —');
       C.layoutSpecs.forEach((sp) => L.push(`${sp.label}：${q.specs[sp.id] || '（未填）'}`));
@@ -752,7 +770,7 @@
       return `<div class="tl-row">
         <div class="tl-label"><b>${esc(p.client)}</b><small>${esc(S[p.service].short)}・${STATE_LABEL[st]}</small></div>
         <div class="tl-track" style="--wk:calc(100% / ${weeks})">
-          <div class="tl-bar ${st === 'tentative' ? 'tentative' : ''} ${st === 'done' ? 'done' : ''}" style="--c:${svcColor(p.service)};left:${(s / total) * 100}%;width:${((e - s + 1) / total) * 100}%" title="${esc(p.client)}｜${esc(p.title)}｜${md(p.s)}–${md(p.e)}">${esc(p.title)}　${md(p.s)}–${md(p.e)}</div>
+          <div class="tl-bar ${st === 'tentative' ? 'tentative' : ''} ${st === 'done' ? 'done' : ''}" style="--c:${svcColor(p.service)};--ci:var(--on-${p.service});left:${(s / total) * 100}%;width:${((e - s + 1) / total) * 100}%" title="${esc(p.client)}｜${esc(p.title)}｜${md(p.s)}–${md(p.e)}">${esc(p.title)}　${md(p.s)}–${md(p.e)}</div>
         </div></div>`;
     }).join('');
     $('#timeline').innerHTML = `
@@ -789,7 +807,7 @@
         const st = stateOf(p);
         const isStart = +p.s === +d || d.getDay() === 0 || +d === +first;
         const isEnd = +p.e === +d || d.getDay() === 6;
-        chips += `<div class="chip${isStart ? ' s' : ' cont'}${isEnd ? ' e' : ''}${st === 'tentative' ? ' tentative' : ''}${st === 'done' ? ' done' : ''}" style="--c:${svcColor(p.service)}" title="${esc(p.client)}｜${esc(p.title)}">${esc(p.client)}・${esc(S[p.service].short)}</div>`;
+        chips += `<div class="chip${isStart ? ' s' : ' cont'}${isEnd ? ' e' : ''}${st === 'tentative' ? ' tentative' : ''}${st === 'done' ? ' done' : ''}" style="--c:${svcColor(p.service)};--ci:var(--on-${p.service})" title="${esc(p.client)}｜${esc(p.title)}">${esc(p.client)}・${esc(S[p.service].short)}</div>`;
       }
       const cl = closedOn(d);
       if (cl) chips = `<div class="closed-tag"${+d === +cl.s || d.getDay() === 0 ? '' : ' aria-hidden="true"'}>${+d === +cl.s || d.getDay() === 0 ? esc(cl.label) : ''}</div>` + chips;
