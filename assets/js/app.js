@@ -34,14 +34,33 @@
   };
 
   /* ---------- projects & availability ---------- */
-  const projects = C.projects.map((p) => ({ ...p, s: parseDate(p.start), e: parseDate(p.end) })).sort((a, b) => a.s - b.s);
+  let projects = [];
+  let confirmed = [];
+  function setProjects(list) {
+    projects = list.map((p) => ({ ...p, s: parseDate(p.start), e: parseDate(p.end) }))
+      .filter((p) => p.s && p.e && S[p.service])
+      .sort((a, b) => a.s - b.s);
+    confirmed = projects.filter((p) => !p.tentative);
+  }
+  // 有設定後台就從 Google 試算表讀檔期，失敗時退回 config 裡的 projects
+  async function loadProjects() {
+    if (!C.site.backendUrl) return C.projects;
+    try {
+      const res = await fetch(C.site.backendUrl);
+      const data = await res.json();
+      if (data.ok && Array.isArray(data.projects)) return data.projects;
+      throw new Error('bad response');
+    } catch (e) {
+      console.warn('檔期讀取失敗，改用 config.js 的 projects', e);
+      return C.projects;
+    }
+  }
   const STATE_LABEL = { active: '進行中', upcoming: '已排定', tentative: '洽談中', done: '已完成' };
   function stateOf(p, t = today()) {
     if (t > p.e) return 'done';
     if (p.tentative) return 'tentative';
     return t < p.s ? 'upcoming' : 'active';
   }
-  const confirmed = projects.filter((p) => !p.tentative);
   const loadOn = (d) => confirmed.filter((p) => p.s <= d && d <= p.e).length;
   function nextAvailable() {
     let d = today();
@@ -78,6 +97,17 @@
   function renderRules() {
     $('#brand-name').textContent = C.site.name;
     $('#rules-tagline').textContent = C.site.tagline;
+
+    const A = C.about;
+    if (A) {
+      $('#about').innerHTML = `
+        <div class="about-photo">${A.photo ? `<img src="${esc(A.photo)}" alt="${esc(C.site.owner)}">` : `<span aria-hidden="true">${esc(C.site.owner.slice(0, 1))}</span>`}</div>
+        <div class="about-body">
+          <h2>${esc(A.heading)}</h2>
+          ${A.paragraphs.map((t) => `<p>${esc(t)}</p>`).join('')}
+          <dl class="about-facts">${A.facts.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
+        </div>`;
+    } else $('#about').hidden = true;
 
     const from = {
       layout: { v: rate(Math.min(...S.layout.types.map((t) => t.rate))), u: '／頁起' },
@@ -136,6 +166,15 @@
    * 2. 作品集
    * ===================================================================== */
   const pf = { idx: 0, mode: store.get('pf-mode') === 'flip' ? 'flip' : 'doc', track: true, zoom: 1, k: 0, moving: new Set() };
+  const pad2 = (n) => String(n).padStart(2, '0');
+  C.portfolio.forEach((w) => {
+    if (!w.pages && w.scans) {
+      const { folder, count, ext = 'jpg', files } = w.scans;
+      const srcs = files ? files.map((f) => `${folder}/${f}`) : Array.from({ length: count }, (_, i) => `${folder}/p${pad2(i + 1)}.${ext}`);
+      w.pages = srcs.map((src, i) => ({ type: i === 0 ? 'cover-scan' : 'scan', src }));
+    }
+    w.pages = w.pages || [];
+  });
   const work = () => C.portfolio[pf.idx];
 
   function markup(s) {
@@ -159,6 +198,9 @@
         return `<div class="page pg-bilingual">${head}<div class="page-inner">${p.pairs.map((x) => `<div class="pair"><div class="src">${esc(x.src)}</div><p class="tgt">${markup(x.tgt)}</p></div>`).join('')}</div>${folio}</div>`;
       case 'image':
         return `<div class="page pg-image">${head}<div class="page-inner"><figure><img src="${esc(p.src)}" alt="${esc(p.caption || '')}"><figcaption>${esc(p.caption || '')}</figcaption></figure></div>${folio}</div>`;
+      case 'scan':
+      case 'cover-scan':
+        return `<div class="page pg-scan"><img src="${esc(p.src)}" alt="${esc(w.title)} 第 ${n} 頁" loading="lazy"></div>`;
       case 'blank':
         return `<div class="page pg-blank"></div>`;
       default:
@@ -533,16 +575,33 @@
     $('#summary-text').textContent = summary;
     const btn = $('#q-submit');
 
-    if (C.site.formEndpoint) {
+    if (C.site.backendUrl || C.site.formEndpoint) {
       btn.disabled = true;
       btn.textContent = '送出中…';
       try {
-        const res = await fetch(C.site.formEndpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({ name: q.name, email: q.email, _replyto: q.email, _subject: `委託試算：${q.project || q.name}（${money(r.total)}）`, total: r.total, message: summary })
-        });
-        if (!res.ok) throw new Error(res.status);
+        let res;
+        if (C.site.backendUrl) {
+          // Apps Script 不接受 JSON 標頭的跨網域預檢，所以用 text/plain 傳 JSON 字串
+          res = await fetch(C.site.backendUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+              name: q.name, email: q.email, contact: q.contact, project: q.project, link: q.link, note: q.note,
+              services: [...new Set(r.lines.map((l) => S[l.svc].short))].join('、'),
+              total: r.total, days: r.days, start: iso(r.start), deadline: q.deadline ? iso(q.deadline) : '',
+              verdict: r.verdict.title, message: summary
+            })
+          });
+          const data = await res.json();
+          if (!data.ok) throw new Error(data.error);
+        } else {
+          res = await fetch(C.site.formEndpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({ name: q.name, email: q.email, _replyto: q.email, _subject: `委託試算：${q.project || q.name}（${money(r.total)}）`, total: r.total, message: summary })
+          });
+          if (!res.ok) throw new Error(res.status);
+        }
         showSubmitted('已送出', `謝謝你！我會在 2 個工作天內回信到 ${q.email}。下面是這次送出的內容，可以留著對照。`);
       } catch (ex) {
         showSubmitted('送出失敗', `表單沒有送出成功。請按「複製委託內容」，寄到 ${C.site.email}，我一樣會處理。`);
@@ -686,11 +745,14 @@
     $('#month').hidden = mode !== 'month';
     [['#sched-timeline', 'timeline'], ['#sched-month', 'month']].forEach(([s, m]) => { $(s).classList.toggle('is-on', m === mode); $(s).setAttribute('aria-pressed', m === mode); });
   }
-  function initSchedule() {
+  function renderSchedule() {
     renderSchedSummary();
     renderTimeline();
     renderMonth();
     renderProjTable();
+  }
+  function initSchedule() {
+    renderSchedule();
     $('#sched-timeline').addEventListener('click', () => setSchedMode('timeline'));
     $('#sched-month').addEventListener('click', () => setSchedMode('month'));
     $('#month-prev').addEventListener('click', () => { sched.month = new Date(sched.month.getFullYear(), sched.month.getMonth() - 1, 1); renderMonth(); });
@@ -698,11 +760,20 @@
   }
 
   /* ---------- boot ---------- */
-  renderAvailability();
   renderRules();
   initPortfolio();
+  setProjects(C.site.backendUrl ? [] : C.projects);
   initQuote();
   initSchedule();
   window.addEventListener('hashchange', route);
   route();
+  if (C.site.backendUrl) {
+    $('#availability').innerHTML = '<div class="availability-card"><p>讀取檔期中…</p></div>';
+    loadProjects().then((list) => {
+      setProjects(list);
+      renderAvailability();
+      renderSchedule();
+      renderEstimate();
+    });
+  } else renderAvailability();
 })();

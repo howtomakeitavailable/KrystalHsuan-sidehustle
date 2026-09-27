@@ -16,10 +16,29 @@ window.SITE_CONFIG = {
     tagline: '書籍排版・校對・翻譯，從原稿到可以付印的檔案。',
     email: 'your-email@example.com',
     line: '',
-    // 表單送出位置。建議用 Formspree（https://formspree.io）免費方案，
-    // 建好表單後把網址貼在這裡，例如 'https://formspree.io/f/abcdwxyz'。
-    // 留空時，案主送出後會看到「複製委託內容」與你的 Email，改由他們自己寄信。
+    // 後台網址：Google Apps Script 部署後拿到的網址（結尾是 /exec），設定步驟見 README。
+    // 設定後：委託會寫進你的 Google 試算表並寄信通知你，行事曆改讀試算表的「檔期」分頁，
+    //         下面的 projects 就不再使用。
+    backendUrl: '',
+    // 不想用試算表、只想收信的話，也可以填 Formspree 網址（https://formspree.io）。
+    // 兩個都留空時，案主送出後會看到「複製委託內容」與你的 Email，改由他們自己寄信。
     formEndpoint: ''
+  },
+
+  // 規則頁上的「關於我」
+  about: {
+    photo: '',                     // 大頭照，例如 'assets/img/me.jpg'；留空會顯示名字的第一個字
+    heading: '你好，我是 Krystal',
+    paragraphs: [
+      '出版社編輯出身，現在專心做書籍排版、校對與翻譯。習慣先讀完整份稿子，再決定版式和體例。',
+      '做過散文、科普譯著、商業書與教科書，也接受個人出版與獨立刊物的委託。'
+    ],
+    facts: [
+      ['經歷', '出版社編輯 5 年，接案 3 年'],
+      ['工具', 'InDesign、Word 修訂、Acrobat 註解'],
+      ['語言', '中文（母語）、英文、日文 N1'],
+      ['回覆時間', '2 個工作天內']
+    ]
   },
 
   capacity: {
@@ -161,9 +180,16 @@ window.SITE_CONFIG = {
    *   chapter   章首：label / title / paragraphs
    *   text      內文：paragraphs
    *   bilingual 對照：pairs: [{ src, tgt }, ...]
-   *   image     圖片：src（放在 assets/img/）/ caption
+   *   image     圖片（保留頁眉頁碼）：src / caption
+   *   scan      整頁圖片（滿版，適合放 InDesign／PDF 匯出的頁面圖）：src
    *   blank     空白頁
-   * 內文可以用 [-刪除-] 與 {+新增+} 標記校對修改，在文件檢視中會顯示成修訂。 */
+   * 內文可以用 [-刪除-] 與 {+新增+} 標記校對修改，在文件檢視中會顯示成修訂。
+   *
+   * 已經排好的書，最省事的做法是把每頁匯出成圖片，不用寫 pages：
+   *   scans: { folder: 'assets/img/island', count: 12 }
+   * 會依序讀取 assets/img/island/p01.jpg、p02.jpg … p12.jpg（第 1 張當封面）。
+   * 副檔名不是 jpg 的話加上 ext: 'png'。
+   * 檔名不想改的話，也可以直接列出來：scans: { folder: 'assets/img/island', files: ['封面.jpg', '內頁1.jpg'] } */
   portfolio: [
     {
       id: 'island',
