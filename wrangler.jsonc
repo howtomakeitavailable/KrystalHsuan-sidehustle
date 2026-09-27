@@ -1,0 +1,17 @@
+// Cloudflare Worker 設定。name 要和 Cloudflare 後台的 Worker 名稱一致。
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "krystalhsuan-sidehustle",
+  "main": "server/worker.js",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  // 用名稱連到你在 D1 建立的資料庫，不需要填 ID
+  "d1_databases": [
+    { "binding": "DB", "database_name": "krystal-studio" }
+  ],
+  "observability": { "enabled": true }
+}

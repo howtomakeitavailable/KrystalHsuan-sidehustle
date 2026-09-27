@@ -1,6 +1,6 @@
 # Krystal 書頁工作室：接案 Dashboard
 
-書籍排版・校對・翻譯的接案網站。前台（案主看的）和後台（你管理的）在同一個專案裡，一起部署到 Cloudflare，免費方案就夠用。
+書籍排版・校對・翻譯的接案網站。前台（案主看的）和後台（你管理的）在同一個專案裡，一起部署到 Cloudflare Workers，免費方案就夠用。
 
 | 頁面 | 網址 | 內容 |
 | --- | --- | --- |
@@ -14,8 +14,8 @@
 案主                                   你
  │ 在「委託試算」送出                     │ 登入 /admin
  ▼                                     ▼
-┌──────────────── 同一個網站（Cloudflare Pages）────────────────┐
-│  前台 public/          API functions/          資料庫 D1       │
+┌─────────────── 同一個網站（Cloudflare Worker）────────────────┐
+│  前台 public/          API /api/*              資料庫 D1       │
 │  委託試算  ── 送出 ──▶  /api/requests  ──────▶  委託（私人）   │
 │  後台      ── 排入檔期 ▶ /api/admin/…   ──────▶  檔期           │
 │  檔期行事曆 ◀─ 讀取 ─── /api/projects  ◀──────  （只給公開欄位）│
@@ -93,24 +93,24 @@
 全部在 Cloudflare 網頁上點選完成，不需要安裝任何東西。
 
 1. **註冊**：到 [dash.cloudflare.com](https://dash.cloudflare.com/sign-up) 註冊免費帳號。
-2. **建立資料庫**：左側選單「Storage & Databases → D1 SQL Database」→「Create」，名稱填 `krystal-studio`，按建立。資料表會在網站第一次被使用時自動建立。
-3. **連接網站**：左側「Workers & Pages」→「Create」→ 切到「Pages」分頁 →「Connect to Git」→ 授權 GitHub 並選這個 repo：
-   - Production branch：`main`
-   - Framework preset：`None`
+2. **建立資料庫**：左側選單「Storage & databases → D1 SQL database」→「Create database」，名稱填 `krystal-studio`（要一字不差），按建立。資料表會在網站第一次被使用時自動建立。
+3. **建立 Worker 並連接 GitHub**：左側「Workers & Pages」→「Create application」→「Import a repository」→ 授權 GitHub 並選這個 repo：
+   - Project name：`krystalhsuan-sidehustle`（要和 `wrangler.jsonc` 裡的 `name` 一樣；想取別的名字，兩邊一起改）
    - Build command：留空
-   - Build output directory：`public`
-   - 按「Save and Deploy」。
-4. **綁定資料庫**：進入剛建立的專案 →「Settings → Bindings」→「Add」→「D1 database」：
-   - Variable name：`DB`
-   - D1 database：選 `krystal-studio`
-5. **設定後台密碼**：同一頁「Settings → Variables and Secrets」→「Add」：
+   - Deploy command：`npx wrangler deploy`
+   - Root directory：`/`
+   - 按「Deploy」。資料庫會依照 `wrangler.jsonc` 的設定自動綁定，不用手動設定。
+4. **確認部署的分支**：Worker 的「Settings → Build → Branch control」，Production branch 應該是 `main`。程式要在 `main` 分支上，Cloudflare 才部署得到。
+5. **設定後台密碼**：同一個 Worker 的「Settings → Variables and Secrets」→「Add」：
    - Type：`Secret`
    - Variable name：`ADMIN_PASSWORD`
    - Value：你的後台密碼（至少 12 個字元，不要和其他網站重複）
-6. **重新部署**：「Deployments」分頁，最新一筆右邊「⋯ → Retry deployment」，讓綁定和密碼生效。
-7. **完成**：網址會是 `https://<專案名稱>.pages.dev`，後台在 `https://<專案名稱>.pages.dev/admin`。之後推到 `main` 就會自動更新網站。
+   - 按「Deploy」儲存。
+6. **完成**：網址會是 `https://krystalhsuan-sidehustle.<你的帳號>.workers.dev`，後台在網址後面加 `/admin`。之後推到 `main` 就會自動重新部署。
 
-想用自己的網域（例如 `krystal-books.com`）：專案的「Custom domains」→「Set up a custom domain」照指示設定。
+**確認有沒有接好**：打開網址加上 `/api/projects`，看到 `{"ok":true,"projects":[]}` 就是成功了。
+
+想用自己的網域（例如 `krystal-books.com`）：Worker 的「Settings → Domains & Routes」→「Add」→「Custom domain」照指示設定。
 
 ---
 
@@ -150,13 +150,16 @@ public/                    網站（前台＋後台頁面）
   assets/js/admin.js       後台
   assets/css/style.css     樣式（含深色模式）
   assets/img/              大頭照、作品集圖片
-functions/api/             後端 API（Cloudflare Pages Functions）
+functions/api/             後端 API（每個網址一個檔案）
+server/worker.js           Worker 入口：把 /api/* 分派給上面的檔案
 server/lib.js              後端共用：資料表結構、登入驗證、欄位檢查
+wrangler.jsonc             Cloudflare 設定（Worker 名稱、資料庫綁定）
 ```
 
 ### 給會寫程式的人：本機開發
 
 ```bash
 npm install
-npm run dev        # http://localhost:8788 ，後台密碼 dev-password，資料存在 .wrangler/
+echo "ADMIN_PASSWORD=dev-password" > .dev.vars
+npm run dev        # http://localhost:8787 ，資料存在 .wrangler/
 ```
