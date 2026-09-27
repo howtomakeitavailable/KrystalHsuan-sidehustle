@@ -15,7 +15,7 @@ window.SITE_CONFIG = {
   site: {
     name: 'Krystal 書頁工作室',
     owner: 'Krystal Hsuan',
-    tagline: '校對、實體書內頁排版、電子書 EPUB。接受原創、同人、BL、BG、R18 作品。',
+    tagline: '校對、實體書內頁排版、電子書 EPUB、翻譯。接受原創、同人、BL、BG、R18 作品。',
     email: 'your-email@example.com',
     line: ''
   },
@@ -28,7 +28,7 @@ window.SITE_CONFIG = {
       '這裡放你的自我介紹：接案多久、做過哪些類型的本子、你在意的細節。'
     ],
     facts: [
-      ['服務類型', '校對、實體書內頁排版、電子書 EPUB'],
+      ['服務類型', '校對、實體書內頁排版、電子書 EPUB、翻譯'],
       ['校稿工具', 'Word 追蹤修訂與註解'],
       ['每月件數', '2～3 件（總字數 12 萬字內）']
     ]
@@ -76,7 +76,6 @@ window.SITE_CONFIG = {
     },
     rushRate: 0.5,                 // 急件：加收總額的 50%
     volumeFee: 150,                // 拆本費：一本不收，每多拆 1 本 +150（2 本 +150、3 本 +300）
-    relayoutFee: 150,              // 重新開版：每本 +150（寫在排版流程與其他加價，不列入試算）
     printCap: 1000,                // 代印服務每件作品最多收
     printVendors: { north: '千業印刷', other: '樺舍印前' },
 
@@ -85,7 +84,9 @@ window.SITE_CONFIG = {
       proofread: { name: '校對',           short: '校對', intro: '用 Word 追蹤修訂校正錯字與標點，建議以註解標示，不改動文句。' },
       layout:    { name: '實體書內頁排版', short: '排版', intro: '依你的開本、字型與版面需求排版，交付可送印的 PDF。' },
       epub:      { name: '電子書 EPUB',    short: 'EPUB', intro: '製作可上架電子書平台的 EPUB 檔。' },
-      print:     { name: '代印服務',       short: '代印', intro: '北北基客戶交由千業印刷，其他縣市交由樺舍印前。' }
+      print:     { name: '代印服務',       short: '代印', intro: '北北基客戶交由千業印刷，其他縣市交由樺舍印前。' },
+      // 翻譯：規則還在整理，委託單上可以勾選，但不計算金額（quoteLater），由你另外報價
+      translate: { name: '翻譯',           short: '翻譯', intro: '翻譯規則整理中，勾選後請描述需求，我會另外報價。', quoteLater: true }
     }
   },
 
@@ -95,7 +96,7 @@ window.SITE_CONFIG = {
       ['接受作品類型', '原創、同人、BL、BG、R18'],
       ['每月件數', '基本上 2～3 件（總字數 12 萬字內）'],
       ['CWT 前後', 'CWT 前兩個月，如果我有擺攤就不接案；沒有擺攤的話，這兩個月可多接一件（總字數仍在 12 萬字內）'],
-      ['服務類型', '校對、實體書內頁排版、電子書 EPUB']
+      ['服務類型', '校對、實體書內頁排版、電子書 EPUB、翻譯（規則整理中，請來信詢問）']
     ],
     // 校稿原則
     proofPrinciples: [
@@ -124,19 +125,19 @@ window.SITE_CONFIG = {
           '收到委託單後，寄委託資訊到你的電子信箱。',
           '收到稿件後，和你討論希望的樣式（開版、字型大小、特殊設計）。',
           '收到 50% 訂金後試排第 1 版，檢查明顯錯字、標點符號方向、段落後回傳。',
-          '可以重複第 2、3 步，重新開版 1 次；第 3 次開版起，每本加價 150 元（兩本就是 150 + 150 元）。',
+          '可以重複第 2、3 步，重新開版 1 次；第 3 次開版起加價 200 元（兩本或以上的案件要重開版：第一本 +200 元，第二本起每本 +100 元）。',
           '你滿意並匯尾款後，回傳本次委託結案資訊及 PDF 檔案。',
-          '之後聯絡印刷廠時如果有版型問題，在不重新開版的前提下可以免費調整；必須重新開版的話，每本酌收 150 元。'
+          '之後聯絡印刷廠時如果有版型問題，在不重新開版的前提下可以調整；必須再次開版的話，再酌收 200 元（第二本也是 200 元）。'
         ],
-        note: '重新開版的調整天數少於 7 天視為急件，每本再加收 100 元（即每本 250 元）。'
+        note: '重新開版的調整天數少於 7 天視為急件，每本再多收 100 元（即第一本 300 元；有第二本的話 300 元 + 300 元）。'
       }
     ],
     // 交件後的其他加價（顯示在價目表下方）
     extraFees: [
       ['二校後再修改', '每次 +100 元'],
-      ['排版第 3 次開版起', '每本 +150 元'],
-      ['送印前因版型問題需重新開版', '每本 +150 元'],
-      ['重新開版調整天數少於 7 天', '視為急件，每本再 +100 元']
+      ['排版第 3 次開版起', '+200 元；兩本或以上：第一本 +200 元，第二本起每本 +100 元'],
+      ['聯絡印刷廠後需再次開版', '每本 +200 元'],
+      ['重新開版調整天數少於 7 天', '視為急件，每本再 +100 元（即每本 300 元）']
     ]
   },
 
@@ -153,11 +154,11 @@ window.SITE_CONFIG = {
 
   /* 範例檔期 --------------------------------------------------------------
    * 上線後的檔期在後台（網址/admin）管理，這裡只在「直接打開 index.html 預覽」時使用。
-   * service：proofread（校對）/ layout（排版）/ epub（EPUB） */
+   * service：proofread（校對）/ layout（排版）/ epub（EPUB）/ translate（翻譯） */
   projects: [
     { client: '案主A', service: 'proofread', title: '同人長篇 校對',       start: '2026-09-14', end: '2026-10-08' },
     { client: '案主B', service: 'layout',    title: '原創 BL 本 內頁排版', start: '2026-09-21', end: '2026-10-23' },
-    { client: '案主C', service: 'epub',      title: '原創小說 EPUB',       start: '2026-10-26', end: '2026-11-06' },
+    { client: '案主C', service: 'translate', title: '日文同人短篇 翻譯',   start: '2026-10-26', end: '2026-11-06' },
     { client: '案主D', service: 'proofread', title: 'BG 短篇集 校對＋排版', start: '2026-11-02', end: '2026-11-27', tentative: true }
   ],
 
@@ -168,6 +169,7 @@ window.SITE_CONFIG = {
    *   toc       目次：entries: [['篇名', 頁碼], ...]
    *   chapter   章首：label / title / paragraphs
    *   text      內文：paragraphs
+   *   bilingual 翻譯對照：pairs: [{ src, tgt }, ...]
    *   image     圖片（保留頁眉頁碼）：src / caption
    *   scan      整頁圖片（滿版，適合放 InDesign／PDF 匯出的頁面圖）：src
    *   blank     空白頁
@@ -206,6 +208,32 @@ window.SITE_CONFIG = {
         { type: 'text', paragraphs: [
           '渡輪上的人不多。一個穿制服的學生靠著欄杆背單字，嘴裡小聲念著，風一吹，單字卡翻了好幾頁。',
           '船身駛離港口時，整座城市慢慢縮成一條線。我突然明白，原來從海上看回去，家是這麼小、這麼安靜的東西。'
+        ] }
+      ]
+    },
+    {
+      id: 'botany',
+      title: '給忙碌者的植物學',
+      kind: '科普譯著',
+      role: '英譯中＋排版',
+      year: 2025,
+      trim: [170, 230],
+      coverColor: '#3f6b4a',
+      note: '中英對照樣張：專有名詞首次出現附原文，學名以斜體標示。',
+      pages: [
+        { type: 'cover', title: '給忙碌者的植物學', subtitle: 'Botany for Busy People', author: 'M. Harlow　著／Krystal Hsuan　譯', publisher: '示範出版社' },
+        { type: 'chapter', label: '第一章', title: '葉子為什麼是綠的', paragraphs: [
+          '走進任何一座公園，你看到的顏色大多是綠色。這不是巧合，而是植物在數億年間做出的選擇：吸收紅光與藍光，把用不到的綠光反射回來。',
+          '負責這件事的是葉綠素（chlorophyll），一種藏在葉綠體裡的色素。'
+        ] },
+        { type: 'bilingual', pairs: [
+          { src: 'A leaf is, in essence, a solar panel that builds itself.', tgt: '說穿了，葉子就是一片會自己長出來的太陽能板。' },
+          { src: 'It unfolds in spring, works through summer, and is let go in autumn when the cost of keeping it exceeds what it earns.', tgt: '它在春天展開，整個夏天勤奮工作；到了秋天，當維持它的成本高過它帶來的收益，植物就放手讓它落下。' },
+          { src: 'Nothing about this is sentimental. It is simply good accounting.', tgt: '這件事一點也不感傷，只是精打細算而已。' }
+        ] },
+        { type: 'text', paragraphs: [
+          '以銀杏（Ginkgo biloba）為例，它的葉子在入秋後會在短短幾天內轉黃。那是因為葉綠素被分解回收，原本就存在、卻一直被綠色蓋住的類胡蘿蔔素（carotenoid）終於露出臉來。',
+          '所以秋天的黃，其實不是新長出來的顏色，而是一直都在的顏色。'
         ] }
       ]
     },

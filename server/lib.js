@@ -1,5 +1,5 @@
 // 後端共用工具：回應格式、登入 session、欄位檢查
-export const SERVICES = ['proofread', 'layout', 'epub'];
+export const SERVICES = ['proofread', 'layout', 'epub', 'translate'];
 export const REQUEST_STATUSES = ['new', 'quoted', 'accepted', 'declined'];
 const SESSION_DAYS = 30;
 const enc = new TextEncoder();
@@ -29,7 +29,7 @@ const SCHEMA = [
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   created_at   TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
   alias        TEXT    NOT NULL,              -- 公開：網站上顯示的代稱
-  service      TEXT    NOT NULL,              -- 公開：proofread / layout / epub
+  service      TEXT    NOT NULL,              -- 公開：proofread / layout / epub / translate
   title        TEXT,                          -- 公開：工作內容
   start_date   TEXT    NOT NULL,              -- 公開：開工日
   end_date     TEXT    NOT NULL,              -- 公開：截稿日

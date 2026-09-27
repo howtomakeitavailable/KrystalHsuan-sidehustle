@@ -3,7 +3,7 @@
 
   const C = window.SITE_CONFIG;
   const S = C.pricing.services;
-  const SVC_KEYS = ['proofread', 'layout', 'epub'];
+  const SVC_KEYS = ['proofread', 'layout', 'epub', 'translate'];
   const STATUS = { new: '待回覆', quoted: '已報價', accepted: '成立', declined: '婉拒' };
   const PSTATE = { active: '進行中', upcoming: '已排定', tentative: '洽談中', hidden: '不公開', done: '已完成' };
 

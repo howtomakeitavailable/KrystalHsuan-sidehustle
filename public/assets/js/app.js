@@ -4,7 +4,7 @@
   const C = window.SITE_CONFIG;
   const P = C.pricing;
   const S = P.services;
-  const SVC_KEYS = ['proofread', 'layout', 'epub'];   // 行事曆與規則頁顯示的服務
+  const SVC_KEYS = ['proofread', 'layout', 'epub', 'translate'];   // 行事曆與規則頁顯示的服務
 
   /* ---------- helpers ---------- */
   const $ = (s, r = document) => r.querySelector(s);
@@ -113,7 +113,8 @@
     const from = {
       proofread: `<b>${money(Math.max(pb, P.minimumFee))}</b> 起`,
       layout: `只排版 <b>${money(nb + Math.round(nb * M.none.layout))}</b> 起<br><small>接在校對後 +${pct(M.proofread.layout)}</small>`,
-      epub: `搭配排版 <b>+${pct(M.none.extras.epub)}</b><br><small>以基本費計</small>`
+      epub: `搭配排版 <b>+${pct(M.none.extras.epub)}</b><br><small>以基本費計</small>`,
+      translate: `<b>另行報價</b><br><small>收費規則整理中</small>`
     };
     $('#service-cards').innerHTML = SVC_KEYS.map((k) => `
       <article class="svc-card" style="--c:${svcColor(k)}">
@@ -387,7 +388,7 @@
     layout:    { label: '排版', desc: '稿件已經校對好，只需要排版', mode: 'none', layout: true }
   };
   const DEFAULTS = { words: 60000, services: ['proofread', 'layout'], volumes: 1, region: 'north' };
-  const SVC_PICKS = ['proofread', 'layout', 'epub', 'print'];   // 委託單最上面的複選
+  const SVC_PICKS = ['proofread', 'layout', 'epub', 'print', 'translate'];   // 委託單最上面的複選
 
   function choice(name, id, label, desc, extra, checked, type = 'radio') {
     return `<label class="choice"><input type="${type}" name="${name}" value="${esc(id)}" id="${name}-${esc(id)}"${checked ? ' checked' : ''}>
@@ -430,6 +431,10 @@
         <div><div class="group-label">作品類型（可複選）</div><div class="spec-opts">
           ${C.workTypes.map((t) => `<label class="pill"><input type="checkbox" name="q-type" value="${esc(t)}"><span>${esc(t)}</span></label>`).join('')}
         </div></div>
+        <label class="field" id="translate-field">翻譯需求
+          <textarea id="q-translate" rows="3" placeholder="原文語言→譯文語言、原文字數、作品類型（小說、漫畫台詞、後記……）"></textarea>
+          <small>翻譯的收費規則還在整理中，我會看過需求後另外報價。</small>
+        </label>
         <label class="field" id="habit-field">你的寫作習慣
           <textarea id="q-habits" rows="3" placeholder="例如：「的地得」維持原樣、對話結尾不加句號、某角色說話固定用「ㄌ」……"></textarea>
           <small>沒有填寫的話，將依照校稿原則第 2～4 點校稿。</small>
@@ -486,12 +491,14 @@
       specs[sp.id] = v === '其他' && other && other.value.trim() ? `其他：${other.value.trim()}` : v;
     });
     const picked = (k) => !!f.querySelector(`input[name="q-svc"][value="${k}"]:checked`);
-    const proof = picked('proofread'), layout = picked('layout');
+    const proof = picked('proofread'), layout = picked('layout'), translate = picked('translate');
     // EPUB、代印只能搭配排版
     const extras = Object.fromEntries(EXTRA_KEYS.map((k) => [k, layout && picked(k)]));
     return {
       words: Math.max(0, Math.round(Number($('#q-words').value) || 0)),
       service: proof && layout ? 'both' : proof ? 'proofread' : layout ? 'layout' : null,
+      translate,
+      translateNeeds: $('#q-translate').value.trim(),
       extras,
       volumes: Math.max(1, Math.round(Number($('#q-volumes').value) || 1)),
       region: radio('q-region') || 'north',
@@ -518,8 +525,14 @@
     const lines = [];
     const problems = [];
     if (!q.words) problems.push('請填總字數');
-    if (!q.service) problems.push('請至少勾選「校對」或「實體書內頁排版」（EPUB、代印要搭配排版）');
+    if (!q.service && !q.translate) problems.push('請至少勾選一項服務（EPUB、代印要搭配排版）');
     if (problems.length) return { lines, problems };
+    const later = q.translate ? { label: S.translate.name, detail: '收費規則整理中', amount: 0, later: true } : null;
+    if (!q.service) {
+      // 只選翻譯：沒有線上試算
+      const verdict = q.deadline ? { level: 'ok', title: `距離交稿 ${dayDiff(today(), q.deadline)} 天`, text: '翻譯的時程會在報價時一起確認。' } : { level: 'ok', title: '還沒填希望交稿日', text: '填入交稿日，報價時會一起確認時程。' };
+      return { lines: [later], problems, total: null, deposit: null, verdict, notes: [], busy: overlapping(today(), q.deadline || addDays(today(), 30)), choice: null };
+    }
     const choiceOf = SERVICE_CHOICES[q.service];
     const mode = P.modes[choiceOf.mode];
     if (problems.length) return { lines, problems };
@@ -575,6 +588,7 @@
     if (loadOn(t) >= C.capacity.maxConcurrent) notes.push(`目前檔期已滿，最快 ${mdw(nextAvailable())} 可以開始。`);
 
     const total = lines.reduce((s2, l) => s2 + l.amount, 0);
+    if (later) { lines.push(later); notes.unshift('翻譯另行報價，預估總額不含翻譯。'); }
     return { lines, problems, base, total, deposit: Math.round(total * P.depositRate), verdict, notes, busy, mode, choice: choiceOf };
   }
 
@@ -593,6 +607,7 @@
     $('#region-field').hidden = !q.extras.print;
     $('#spec-block').hidden = !c.layout;
     $('#habit-field').hidden = c.mode !== 'proofread' || !q.service;
+    $('#translate-field').hidden = !q.translate;
     $('#vol-hint').textContent = `一本不收費，每多拆 1 本 +${money(P.volumeFee)}（2 本 +${money(P.volumeFee)}、3 本 +${money(P.volumeFee * 2)}）。`;
     $$('.spec-other').forEach((inp) => { inp.hidden = (($(`input[name="${inp.id.replace(/-other$/, '')}"]:checked`) || {}).value) !== '其他'; });
     // 每個服務旁邊顯示目前方案的算法
@@ -604,6 +619,7 @@
       const bundleNote = mode.bundle.items.includes(k) ? `；${mode.bundle.items.map((x) => S[x].short).join('、')}都選，連同排版算全包 ${pct(mode.bundle.rate)}` : '';
       rateText[k] = c.layout ? `基本費 × ${pct(mode.extras[k])}${k === 'print' ? `，最多 ${money(P.printCap)}` : ''}${bundleNote}` : '需搭配排版';
     });
+    rateText.translate = '另行報價';
     SVC_PICKS.forEach((k) => { $(`#q-svc-${k}`).closest('label').querySelector('.rate').textContent = rateText[k]; });
     $('#deadline-hint').textContent = `${mode.rush.text}視為急件，加收總額的 ${pct(P.rushRate)}。`;
 
@@ -616,10 +632,11 @@
     }
     const line = (cls, label, detail, amt) => `<div class="est-line ${cls}"><dt>${label}${detail ? `<small>${detail}</small>` : ''}</dt><dd>${amt}</dd></div>`;
     box.innerHTML = `
-      <div class="est-title">試算結果 <small>${esc(c.label)}</small></div>
-      <dl class="est-lines">${r.lines.map((l) => line(l.rush ? 'plus' : '', esc(l.label), esc(l.detail), money(l.amount))).join('')}</dl>
-      <div class="est-total"><span>預估總額</span><b>${money(r.total)}</b></div>
-      <div class="est-sub"><span>開工前訂金 ${pct(P.depositRate)}</span><b>${money(r.deposit)}</b></div>
+      <div class="est-title">試算結果 <small>${esc([c.label, q.translate ? S.translate.name : ''].filter(Boolean).join('＋'))}</small></div>
+      <dl class="est-lines">${r.lines.map((l) => line(l.rush ? 'plus' : '', esc(l.label), esc(l.detail), l.later ? '另行報價' : money(l.amount))).join('')}</dl>
+      ${r.total == null ? '<div class="est-total"><span>預估總額</span><b class="later">另行報價</b></div>' : `
+      <div class="est-total"><span>預估總額${q.translate ? '<small>（不含翻譯）</small>' : ''}</span><b>${money(r.total)}</b></div>
+      <div class="est-sub"><span>開工前訂金 ${pct(P.depositRate)}</span><b>${money(r.deposit)}</b></div>`}
       <div class="verdict ${r.verdict.level}"><b>${esc(r.verdict.title)}</b><span>${esc(r.verdict.text)}</span></div>
       ${r.notes.length ? `<ul class="est-notes">${r.notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
       <div class="est-sub"><span>同期間我手上的案子</span><b>${r.busy.length} 件</b></div>
@@ -628,7 +645,7 @@
 
   function servicesText(q) {
     const c = SERVICE_CHOICES[q.service] || { mode: '', layout: false };
-    return [c.mode === 'proofread' ? '校對' : null, c.layout ? '排版' : null, ...(c.layout ? EXTRA_KEYS.filter((k) => q.extras[k]).map((k) => S[k].short) : [])].filter(Boolean).join('、');
+    return [c.mode === 'proofread' ? '校對' : null, c.layout ? '排版' : null, ...(c.layout ? EXTRA_KEYS.filter((k) => q.extras[k]).map((k) => S[k].short) : []), q.translate ? S.translate.short : null].filter(Boolean).join('、');
   }
 
   function buildSummary({ q, r }) {
@@ -643,9 +660,11 @@
     if (q.project) L.push(`作品名稱：${q.project}`);
     if (q.types.length) L.push(`作品類型：${q.types.join('、')}`);
     L.push(`總字數：${fmtNum(q.words)} 字`);
-    const lay = SERVICE_CHOICES[q.service].layout;
+    const ch = SERVICE_CHOICES[q.service] || { mode: '', layout: false };
+    const lay = ch.layout;
     L.push(`服務：${servicesText(q)}${lay ? `（${q.volumes} 本）` : ''}${lay && q.extras.print ? `，代印地區：${q.region === 'north' ? `北北基（${P.printVendors.north}）` : `其他縣市（${P.printVendors.other}）`}` : ''}`);
-    if (SERVICE_CHOICES[q.service].mode === 'proofread') L.push(`寫作習慣：${q.habits || '（未填，依校稿原則第 2～4 點）'}`);
+    if (q.translate) L.push(`翻譯需求：${q.translateNeeds || '（未填）'}`);
+    if (ch.mode === 'proofread') L.push(`寫作習慣：${q.habits || '（未填，依校稿原則第 2～4 點）'}`);
     if (lay) {
       L.push('');
       L.push('— 排版規格 —');
@@ -653,8 +672,8 @@
     }
     L.push('');
     L.push('— 試算 —');
-    r.lines.forEach((l) => L.push(`・${l.label}｜${l.detail}｜${money(l.amount)}`));
-    L.push(`預估總額：${money(r.total)}（訂金 ${money(r.deposit)}）`);
+    r.lines.forEach((l) => L.push(`・${l.label}｜${l.detail}｜${l.later ? '另行報價' : money(l.amount)}`));
+    L.push(r.total == null ? '預估總額：另行報價' : `預估總額：${money(r.total)}（訂金 ${money(r.deposit)}）${q.translate ? '，不含翻譯' : ''}`);
     L.push(`希望交稿日：${q.deadline ? iso(q.deadline) : '未填'}（${r.verdict.title}）`);
     if (q.note) { L.push(''); L.push('— 隨意備註 —'); L.push(q.note); }
     return L.join('\n');
