@@ -1,11 +1,13 @@
 /* =====================================================================
  * 網站設定檔：日常維護只需要改這個檔案
  * ---------------------------------------------------------------------
- * - site      ：工作室名稱、聯絡方式、表單送出位置
- * - capacity  ：產能設定（同時可接幾件、休假日）
- * - pricing   ：收費標準（規則頁與試算表單共用，改一次兩邊同步）
- * - rules     ：合作流程與條款文字
- * - projects  ：直接打開 index.html 預覽時用的範例檔期（上線後改在後台 admin.html 管理）
+ * - site      ：工作室名稱、聯絡方式
+ * - about     ：關於我
+ * - capacity  ：接案量、暫停接案期間（例如 CWT 擺攤前）
+ * - pricing   ：收費公式與加價項目（規則頁與委託試算共用，改一次兩邊同步）
+ * - rules     ：委託說明、校稿原則、流程、其他加價
+ * - layoutSpecs：委託單上的「排版規格」選項
+ * - projects  ：直接打開 index.html 預覽時用的範例檔期（上線後改在後台 /admin 管理）
  * - portfolio ：作品集內容
  * 日期一律寫成 'YYYY-MM-DD'。
  * ===================================================================== */
@@ -13,7 +15,7 @@ window.SITE_CONFIG = {
   site: {
     name: 'Krystal 書頁工作室',
     owner: 'Krystal Hsuan',
-    tagline: '書籍排版・校對・翻譯，從原稿到可以付印的檔案。',
+    tagline: '校對、實體書內頁排版、電子書 EPUB。接受原創、同人、BL、BG、R18 作品。',
     email: 'your-email@example.com',
     line: ''
   },
@@ -23,147 +25,134 @@ window.SITE_CONFIG = {
     photo: '',                     // 大頭照，例如 'assets/img/me.jpg'；留空會顯示名字的第一個字
     heading: '你好，我是 Krystal',
     paragraphs: [
-      '出版社編輯出身，現在專心做書籍排版、校對與翻譯。習慣先讀完整份稿子，再決定版式和體例。',
-      '做過散文、科普譯著、商業書與教科書，也接受個人出版與獨立刊物的委託。'
+      '這裡放你的自我介紹：接案多久、做過哪些類型的本子、你在意的細節。'
     ],
     facts: [
-      ['經歷', '出版社編輯 5 年，接案 3 年'],
-      ['工具', 'InDesign、Word 修訂、Acrobat 註解'],
-      ['語言', '中文（母語）、英文、日文 N1'],
-      ['回覆時間', '2 個工作天內']
+      ['服務類型', '校對、實體書內頁排版、電子書 EPUB'],
+      ['校稿工具', 'Word 追蹤修訂與註解'],
+      ['每月件數', '2～3 件（總字數 12 萬字內）']
     ]
   },
 
   capacity: {
     maxConcurrent: 3,              // 同時進行的案子上限，達到上限時顯示「檔期已滿」
-    daysOff: ['2026-10-10']        // 不工作的日子（國定假日、休假），週六日已自動排除
+    monthlyWords: 120000,          // 每月總字數上限；單件超過會在試算提醒
+    daysOff: [],                   // 不工作的日子，例如 ['2026-12-25']
+    // 暫停接案期間：會標在行事曆上，交稿日落在期間內時試算會提醒。
+    // CWT 前兩個月有擺攤就加一筆，例如：
+    //   { start: '2026-12-01', end: '2027-01-31', label: 'CWT 擺攤準備，暫停接案' }
+    closed: []
   },
 
   pricing: {
     currency: 'NT$',
-    minimumFee: 1500,              // 單筆最低收費
-    depositRate: 0.3,              // 訂金比例
-    comboDiscount: 0.05,           // 同時委託兩項以上服務的折扣
-    roundTo: 10,                   // 金額取整到 10 元
-    // 急件判斷：可用工作天 ÷ 預估工作天 的比例
-    rush: [
-      { minRatio: 1.2, rate: 0,   label: '一般件', note: '時間充裕，照一般行程排入' },
-      { minRatio: 0.8, rate: 0.3, label: '急件',   note: '需壓縮其他案子或加班，加收 30%' },
-      { minRatio: 0.6, rate: 0.5, label: '特急件', note: '需夜間與週末趕工，加收 50%' }
-    ],
-    // 比例低於最後一級時，試算會提示「時程不足，需另外討論」
+    depositRate: 0.5,              // 訂金比例
+    minWords: 5000,                // 價目表從 5,000 字起算；未滿 5,000 字以 5,000 字計
+    tableWords: [5000, 10000, 50000, 100000],   // 規則頁價目表列出的字數
 
-    services: {
-      layout: {
-        name: '書籍排版',
-        short: '排版',
-        unit: '頁',
-        intro: '以 InDesign 排版，交付印刷用 PDF（含出血、裁切線）與原始檔。',
-        types: [
-          { id: 'text',    label: '純文字書',     desc: '小說、散文、詩集，少量插圖',         rate: 60,  perDay: 45 },
-          { id: 'mixed',   label: '圖文混排',     desc: '旅遊書、食譜、繪本式編排',           rate: 95,  perDay: 22 },
-          { id: 'complex', label: '表格／教科書', desc: '大量表格、公式、多層標題與註腳',     rate: 130, perDay: 15 }
-        ],
-        extras: [
-          { id: 'cover', label: '封面＋書背＋封底設計', price: 3500, per: 'fixed', days: 3 },
-          { id: 'epub',  label: '加轉 EPUB 電子書',     price: 12,   per: 'page',  days: 2 },
-          { id: 'index', label: '索引製作',             price: 1200, per: 'fixed', days: 1 }
-        ]
-      },
+    // 兩套計價方式：基本費 =（字數 + add）× multiply ÷ divide，四捨五入
+    // 加價項目都是「基本費的百分比」
+    modes: {
       proofread: {
-        name: '校對・潤稿',
-        short: '校對',
-        unit: '千字',
-        intro: '以 Word 修訂模式或 PDF 註解標示，每一處修改都看得到原因。',
-        levels: [
-          { id: 'basic',  label: '一般校對', desc: '錯別字、標點、體例統一、前後文一致', rate: 350, perDay: 18000 },
-          { id: 'polish', label: '校對＋潤稿', desc: '另外調整語句通順、贅字與節奏',     rate: 650, perDay: 9000 }
-        ],
-        // 第一校全價，第二校 70%，第三校 50%
-        rounds: [
-          { label: '一校', multiplier: 1 },
-          { label: '二校', multiplier: 0.7 },
-          { label: '三校', multiplier: 0.5 }
-        ]
+        label: '校對服務',
+        formula: { add: 5000, multiply: 5, divide: 100 },
+        formulaText: '5 ×（字數 + 5,000）÷ 100',
+        extras: { layout: 0.4, epub: 0.25, print: 0.4 },
+        bundle: { items: ['layout', 'epub', 'print'], rate: 0.6 },     // 以上全包
+        rush: { rate: 0.5, days: 14, text: '兩週內要交稿' }
       },
-      translate: {
-        name: '翻譯',
-        short: '翻譯',
-        unit: '字',
-        intro: '譯稿附術語表，專有名詞首次出現附原文。',
-        pairs: [
-          { id: 'en-zh', label: '英譯中', desc: '以英文原文 word 數計', rate: 1.6, perDay: 2500 },
-          { id: 'ja-zh', label: '日譯中', desc: '以日文原文字數計',     rate: 1.1, perDay: 4000 },
-          { id: 'zh-en', label: '中譯英', desc: '以中文原文字數計',     rate: 2.2, perDay: 2500 }
-        ],
-        genres: [
-          { id: 'general',  label: '一般',       multiplier: 1 },
-          { id: 'literary', label: '文學',       multiplier: 1.2 },
-          { id: 'academic', label: '學術／專業', multiplier: 1.35 }
-        ]
+      none: {
+        label: '無校對服務',
+        formula: { add: 7000, multiply: 1, divide: 25 },
+        formulaText: '（字數 + 7,000）÷ 25',
+        extras: { layout: 0.6, epub: 0.25, print: 0.4 },
+        bundle: { items: ['layout', 'epub'], rate: 0.7 },              // 以上全包（不含代印）
+        volumeFee: 150,            // 實體書拆成 1 本以上：每多 1 本加收
+        rush: { rate: 0.5, perWords: 80000, days: 10, text: '每 8 萬字工期 10 天內' }
       }
+    },
+    printCap: 1000,                // 代印服務每件作品最多收
+    printVendors: { north: '千業印刷', other: '樺舍印前' },
+
+    // 服務名稱（規則頁、行事曆、後台共用）
+    services: {
+      proofread: { name: '校對',           short: '校對', intro: '用 Word 追蹤修訂校正錯字與標點，建議以註解標示，不改動文句。' },
+      layout:    { name: '實體書內頁排版', short: '排版', intro: '依你的開本、字型與版面需求排版，交付可送印的 PDF。' },
+      epub:      { name: '電子書 EPUB',    short: 'EPUB', intro: '製作可上架電子書平台的 EPUB 檔。' },
+      print:     { name: '代印服務',       short: '代印', intro: '北北基客戶交由千業印刷，其他縣市交由樺舍印前。' }
     }
   },
 
   rules: {
-    // 合作流程依序顯示
-    process: [
-      { title: '填單試算', text: '在「委託試算」填寫需求，當場看到預估金額與工作天。' },
-      { title: '確認報價與檔期', text: '我會在 2 個工作天內回覆，確認稿件狀態後給正式報價。' },
-      { title: '支付訂金', text: '收到 30% 訂金後排入行事曆，檔期才算確定。' },
-      { title: '進行工作', text: '依約定的節點回報進度，排版案會先給樣張確認版式。' },
-      { title: '交件與修改', text: '交件後 14 天內可提出修改，範圍內免費。' },
-      { title: '結清尾款', text: '確認無誤後付清尾款，交付最終檔案。' }
+    // 委託說明
+    intro: [
+      ['接受作品類型', '原創、同人、BL、BG、R18'],
+      ['每月件數', '基本上 2～3 件（總字數 12 萬字內）'],
+      ['CWT 前後', 'CWT 前兩個月，如果我有擺攤就不接案；沒有擺攤的話，這兩個月可多接一件（總字數仍在 12 萬字內）'],
+      ['服務類型', '校對、實體書內頁排版、電子書 EPUB']
     ],
-    terms: [
+    // 校稿原則
+    proofPrinciples: [
+      '使用 Word 的校稿功能（追蹤修訂）。',
+      '「的、地、得」將依我的判斷及使用習慣校正。',
+      '初次校稿時，標點符號將依我的習慣校正。',
+      '只改錯字和誤用的標點符號，不修改文句邏輯；如果有相關建議，會用 Word 註解標示。',
+      '如果你有自己的寫作習慣，請務必在委託單的「寫作習慣」欄詳細說明，否則將依照第 2～4 點原則校稿。'
+    ],
+    // 流程（依序顯示）
+    processes: [
       {
-        title: '修改範圍',
-        items: [
-          '排版：交件後含 2 次免費修改，每次以一份彙整好的修改清單為準。',
-          '校對：若原稿在校對期間大幅改寫，改寫部分以新稿重新計價。',
-          '翻譯：譯稿交付後 14 天內可針對譯文提出修改，原文變動另計。'
+        title: '校稿流程',
+        steps: [
+          '收到委託單後，寄委託資訊到你的電子信箱。',
+          '收到稿件後先校五百字回傳，讓你參考我的校稿風格；你也可以在這一步喊停。',
+          '收到 50% 訂金後開始校稿。',
+          '檢查、校稿三遍後寄回初校。收到後可以要求再修改一次（也就是我再校兩次）。',
+          '交回二校後，如果還要再修改，每次加收 100 元。',
+          '你滿意並匯尾款後，回寄本次交易資訊及檔案。'
         ]
       },
       {
-        title: '付款',
-        items: [
-          '訂金 30% 於開工前支付，尾款於交件確認後 7 天內支付。',
-          '可開立收據；需要發票請在委託時註明，稅金另計。',
-          '總額 NT$5,000 以下的案子可於交件時一次付清。'
-        ]
-      },
-      {
-        title: '取消與延期',
-        items: [
-          '開工前取消，訂金全額退還。',
-          '開工後取消，依已完成比例計費，訂金不退。',
-          '因稿件延遲交付造成的延期，交件日順延；若撞到其他檔期會另行協調。'
-        ]
-      },
-      {
-        title: '保密與作品使用',
-        items: [
-          '未出版稿件全程保密，不外流、不用於 AI 訓練。',
-          '書籍正式出版後，會徵求你的同意才放進作品集。'
-        ]
+        title: '排版流程',
+        steps: [
+          '收到委託單後，寄委託資訊到你的電子信箱。',
+          '收到稿件後，和你討論希望的樣式（開版、字型大小、特殊設計）。',
+          '收到 50% 訂金後試排第 1 版，檢查明顯錯字、標點符號方向、段落後回傳。',
+          '可以重複第 2、3 步，重新開版 1 次；第 3 次開版起加價 200 元（兩本以上的案件重開版：第一本 +200 元，第二本起每本 +100 元）。',
+          '你滿意並匯尾款後，回傳本次委託結案資訊及 PDF 檔案。',
+          '之後聯絡印刷廠時如果有版型問題，在不重新開版的前提下可以免費調整；必須重新開版的話，酌收 200 元（第二本起每本 100 元）。'
+        ],
+        note: '重新開版的調整天數少於 7 天視為急件，每本再加收 100 元（即第一本 300 元；有第二本的話 300 元 + 200 元）。'
       }
+    ],
+    // 交件後的其他加價（顯示在價目表下方）
+    extraFees: [
+      ['二校後再修改', '每次 +100 元'],
+      ['排版第 3 次開版起', '+200 元；兩本以上第二本起每本 +100 元'],
+      ['送印前因版型問題需重新開版', '+200 元；第二本起每本 +100 元'],
+      ['重新開版調整天數少於 7 天', '視為急件，每本再 +100 元']
     ]
   },
 
+  // 委託單的「排版規格」。每題最後一個選項如果是「其他」，會多一個輸入框。
+  layoutSpecs: [
+    { id: 'size',   label: '書本尺寸', options: ['A5', '其他'] },
+    { id: 'font',   label: '字型',     options: ['新細明體', '其他'] },
+    { id: 'pt',     label: '字級',     options: ['10.5', '11', '其他'] },
+    { id: 'dir',    label: '方向',     options: ['直排', '橫排'] },
+    { id: 'folio',  label: '頁碼位置', options: ['上方外邊角落', '下方外邊角落', '下方正中間'] },
+    { id: 'design', label: '其他設計', text: true, placeholder: '例如：書名圖示、篇章名樣式、扉頁、角色介紹頁……' }
+  ],
+  workTypes: ['原創', '同人', 'BL', 'BG', 'R18'],
+
   /* 範例檔期 --------------------------------------------------------------
-   * 上線後的檔期在後台（網址/admin.html）管理，這裡只在「直接打開 index.html 預覽」時使用。
-   * client  ：對外顯示的名稱，建議用「案主A」之類的代稱
-   * service ：layout / proofread / translate
-   * start   ：開始工作日；end：案主給的截稿日
-   * tentative: true 表示還在洽談、尚未付訂金（會以虛線顯示，不佔檔期）
-   * 狀態（已排定／進行中／已完成）會依今天日期自動判斷。 */
+   * 上線後的檔期在後台（網址/admin）管理，這裡只在「直接打開 index.html 預覽」時使用。
+   * service：proofread（校對）/ layout（排版）/ epub（EPUB） */
   projects: [
-    { client: '案主A', service: 'proofread', title: '心理學譯著 二校',   start: '2026-09-14', end: '2026-10-08' },
-    { client: '案主B', service: 'layout',    title: '旅遊散文集 圖文排版', start: '2026-09-21', end: '2026-10-23' },
-    { client: '案主C', service: 'translate', title: '園藝繪本 英譯中',   start: '2026-10-05', end: '2026-11-06' },
-    { client: '案主D', service: 'layout',    title: '詩集 純文字排版',   start: '2026-10-26', end: '2026-11-13' },
-    { client: '案主E', service: 'proofread', title: '商業書 校對＋潤稿', start: '2026-11-02', end: '2026-11-27', tentative: true },
-    { client: '案主F', service: 'translate', title: '日文料理書 翻譯',   start: '2026-08-03', end: '2026-09-11' }
+    { client: '案主A', service: 'proofread', title: '同人長篇 校對',       start: '2026-09-14', end: '2026-10-08' },
+    { client: '案主B', service: 'layout',    title: '原創 BL 本 內頁排版', start: '2026-09-21', end: '2026-10-23' },
+    { client: '案主C', service: 'epub',      title: '原創小說 EPUB',       start: '2026-10-26', end: '2026-11-06' },
+    { client: '案主D', service: 'proofread', title: 'BG 短篇集 校對＋排版', start: '2026-11-02', end: '2026-11-27', tentative: true }
   ],
 
   /* 作品集 ---------------------------------------------------------------
@@ -173,11 +162,11 @@ window.SITE_CONFIG = {
    *   toc       目次：entries: [['篇名', 頁碼], ...]
    *   chapter   章首：label / title / paragraphs
    *   text      內文：paragraphs
-   *   bilingual 對照：pairs: [{ src, tgt }, ...]
    *   image     圖片（保留頁眉頁碼）：src / caption
    *   scan      整頁圖片（滿版，適合放 InDesign／PDF 匯出的頁面圖）：src
    *   blank     空白頁
-   * 內文可以用 [-刪除-] 與 {+新增+} 標記校對修改，在文件檢視中會顯示成修訂。
+   * 內文可以用 [-刪除-] 與 {+新增+} 標記校對修改，在文件檢視中會顯示成修訂；
+   * 用 [[原文|註解內容]] 標示 Word 註解（黃色底，旁邊附註解）。
    *
    * 已經排好的書，最省事的做法是把每頁匯出成圖片，不用寫 pages：
    *   scans: { folder: 'assets/img/island', count: 12 }
@@ -189,7 +178,7 @@ window.SITE_CONFIG = {
       id: 'island',
       title: '島嶼慢讀',
       kind: '散文集',
-      role: '排版＋一校',
+      role: '實體書內頁排版＋校對',
       year: 2025,
       trim: [148, 210],
       coverColor: '#34505e',
@@ -215,54 +204,26 @@ window.SITE_CONFIG = {
       ]
     },
     {
-      id: 'botany',
-      title: '給忙碌者的植物學',
-      kind: '科普譯著',
-      role: '英譯中＋排版',
-      year: 2025,
-      trim: [170, 230],
-      coverColor: '#3f6b4a',
-      note: '中英對照樣張：專有名詞首次出現附原文，學名以斜體標示。',
-      pages: [
-        { type: 'cover', title: '給忙碌者的植物學', subtitle: 'Botany for Busy People', author: 'M. Harlow　著／Krystal Hsuan　譯', publisher: '示範出版社' },
-        { type: 'chapter', label: '第一章', title: '葉子為什麼是綠的', paragraphs: [
-          '走進任何一座公園，你看到的顏色大多是綠色。這不是巧合，而是植物在數億年間做出的選擇：吸收紅光與藍光，把用不到的綠光反射回來。',
-          '負責這件事的是葉綠素（chlorophyll），一種藏在葉綠體裡的色素。'
-        ] },
-        { type: 'bilingual', pairs: [
-          { src: 'A leaf is, in essence, a solar panel that builds itself.', tgt: '說穿了，葉子就是一片會自己長出來的太陽能板。' },
-          { src: 'It unfolds in spring, works through summer, and is let go in autumn when the cost of keeping it exceeds what it earns.', tgt: '它在春天展開，整個夏天勤奮工作；到了秋天，當維持它的成本高過它帶來的收益，植物就放手讓它落下。' },
-          { src: 'Nothing about this is sentimental. It is simply good accounting.', tgt: '這件事一點也不感傷，只是精打細算而已。' }
-        ] },
-        { type: 'text', paragraphs: [
-          '以銀杏（Ginkgo biloba）為例，它的葉子在入秋後會在短短幾天內轉黃。那是因為葉綠素被分解回收，原本就存在、卻一直被綠色蓋住的類胡蘿蔔素（carotenoid）終於露出臉來。',
-          '所以秋天的黃，其實不是新長出來的顏色，而是一直都在的顏色。'
-        ] }
-      ]
-    },
-    {
-      id: 'cafe',
-      title: '咖啡館經營手記',
-      kind: '商業書',
-      role: '校對＋潤稿（二校）',
+      id: 'rain',
+      title: '雨停之前',
+      kind: '原創小說',
+      role: '校對（初校）',
       year: 2026,
       trim: [148, 210],
-      coverColor: '#6b4a3a',
-      note: '校對示範：在文件檢視打開「顯示修訂」，可以看到刪改與新增的地方。',
+      coverColor: '#4a4f6b',
+      note: '校對示範：文件檢視打開「顯示修訂」，可以看到錯字、標點與「的地得」的修正；對文句的建議放在黃色註解，不直接改動。',
       pages: [
-        { type: 'cover', title: '咖啡館經營手記', subtitle: '一間二十坪小店的十年帳本', author: '陳文謙　著', publisher: '示範出版社' },
-        { type: 'chapter', label: '第三章', title: '定價這件事', paragraphs: [
-          '開店第一年，我把拿鐵定在[-八十元-]{+NT$80+}，理由很簡單：隔壁那家也是這個價錢。',
-          '結果一整年[-下來-]，我[-都-]在算：為什麼客人不少，錢卻存不[-起-]{+下+}來？'
+        { type: 'cover', title: '雨停之前', subtitle: '示範樣張', author: '範例作者　著', publisher: '' },
+        { type: 'chapter', label: '第一章', title: '傘', paragraphs: [
+          '雨下[-的-]{+得+}很大[-,-]{+，+}他站在騎樓下，看著對街的燈號一次次[-在-]{+再+}變紅。',
+          '「你沒帶傘嗎[-?-]{+？+}」她問。聲音很輕，像是怕打擾到誰。',
+          '他搖搖頭，[-慢慢的-]{+慢慢地+}把手機收進口袋[-...-]{+……+}其實他帶了，只是不想打開。'
         ] },
         { type: 'text', paragraphs: [
-          '後來我才[-知道-]{+明白+}，定價不能只看{+別人的+}價目表，要先算清楚自己的成本。一杯拿鐵的豆子、牛奶、杯子[-，-]{+、+}加上房租與人力攤提，其實已經接近[-六十元-]{+NT$60+}。',
-          '{+換句話說，+}每賣出一杯，[-我-]只賺[-了-]二十元[-而已-]。',
-          '第二年我做了一個[-很大膽-]{+大膽+}的決定：漲價十元，同時把牛奶換成在地牧場的鮮乳，並在菜單上寫明產地。'
-        ] },
-        { type: 'text', paragraphs: [
-          '[-結果讓我很意外的是，-]{+出乎意料，+}客人幾乎沒有減少。有熟客告訴我，他們在乎的[-其實-]不是十塊錢，而是「知道自己喝的是什麼」。',
-          '這件事讓我[-學到-]{+體會到+}：價格不只是數字，也是你跟客人之間的一種說明。'
+          '她沒有再問，只是把自己的傘往他那邊移了一點。傘不大，兩個人[-已-]{+以+}一種很彆扭的姿勢站著，誰都沒有先開口。',
+          '[[過了很久，雨還是沒停。|這裡和上一章「雨勢漸小」的描述有點出入，要不要確認一下時間順序？（僅供參考）]]',
+          '「我等一下要去車站[-.-]{+。+}」她終於說，「你呢[-?-]{+？+}」',
+          '他想了想[-,-]{+，+}說：「我也是。」其實他根本不知道自己要去哪裡。'
         ] }
       ]
     }

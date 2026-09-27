@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Krystal 書頁工作室</title>
-<meta name="description" content="書籍排版・校對・翻譯接案：收費標準、作品集、線上試算與檔期行事曆。">
+<meta name="description" content="校對、實體書內頁排版、電子書 EPUB 接案：委託說明、價目表、作品集、線上委託單與檔期行事曆。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@400;700&display=swap">
@@ -17,13 +17,13 @@
       <span class="brand-mark" aria-hidden="true">書</span>
       <span class="brand-text">
         <strong id="brand-name">書頁工作室</strong>
-        <small>排版・校對・翻譯</small>
+        <small>校對・排版・EPUB</small>
       </span>
     </a>
     <nav class="nav" aria-label="主要頁面">
-      <a href="#rules" data-view="rules"><span>收費與規則</span><small>價目、流程、條款</small></a>
+      <a href="#rules" data-view="rules"><span>委託說明與價目</span><small>原則、價目表、流程</small></a>
       <a href="#portfolio" data-view="portfolio"><span>作品集</span><small>文件檢視／翻頁檢視</small></a>
-      <a href="#quote" data-view="quote"><span>委託試算</span><small>填單當場看報價</small></a>
+      <a href="#quote" data-view="quote"><span>委託單</span><small>填單當場看價格</small></a>
       <a href="#schedule" data-view="schedule"><span>檔期行事曆</span><small>目前手上的案子</small></a>
     </nav>
     <div class="availability" id="availability" aria-live="polite"></div>
@@ -33,29 +33,32 @@
     <!-- 1. 收費與規則 -->
     <section class="view" id="view-rules" data-view="rules">
       <header class="view-head">
-        <p class="eyebrow">收費與規則</p>
-        <h1 id="rules-title">從原稿到付印檔</h1>
+        <p class="eyebrow">委託說明與價目</p>
+        <h1 id="rules-title">校對・排版委託</h1>
         <p class="lede" id="rules-tagline"></p>
       </header>
       <div class="service-cards" id="service-cards"></div>
+      <dl class="intro-facts" id="intro-facts"></dl>
 
       <section class="about" id="about" aria-label="關於我"></section>
 
+      <h2 class="section-title">校稿原則</h2>
+      <ol class="principles" id="principles"></ol>
+
       <h2 class="section-title">價目表</h2>
-      <div class="price-tables" id="price-tables"></div>
+      <p class="section-note">一律以字數計價，純排版、純 EPUB 也一樣。加價項目都以基本費的百分比計算。</p>
+      <div class="price-modes" id="price-tables"></div>
+      <p class="section-note" id="price-footnote"></p>
 
-      <h2 class="section-title">加價、折扣與付款</h2>
-      <div class="fee-grid" id="fee-grid"></div>
+      <h2 class="section-title">交件後的其他加價</h2>
+      <div class="table-wrap"><table class="plain-table" id="extra-fees"></table></div>
 
-      <h2 class="section-title">合作流程</h2>
-      <ol class="process" id="process"></ol>
-
-      <h2 class="section-title">條款</h2>
-      <div class="terms" id="terms"></div>
+      <h2 class="section-title">流程</h2>
+      <div class="processes" id="processes"></div>
 
       <div class="cta-band">
-        <p>知道大概的頁數或字數，就可以先試算。</p>
-        <a class="btn btn-primary" href="#quote">開始試算</a>
+        <p>知道大概的字數，就可以先試算。</p>
+        <a class="btn btn-primary" href="#quote">填委託單</a>
       </div>
     </section>
 
@@ -104,53 +107,13 @@
     <!-- 3. 委託試算 -->
     <section class="view" id="view-quote" data-view="quote" hidden>
       <header class="view-head">
-        <p class="eyebrow">委託試算</p>
-        <h1>先算算看，再決定</h1>
-        <p class="lede">勾選需要的服務、填入頁數或字數，右邊會即時算出預估金額、工作天數，以及交件日趕不趕得上。欄位裡的數字是範例，請改成你的案子。</p>
+        <p class="eyebrow">委託單</p>
+        <h1>填單，當場看到價格</h1>
+        <p class="lede">填入字數、選好服務，右邊會依價目表即時算出金額、訂金，以及是不是急件。欄位裡的數字是範例，請改成你的作品。</p>
       </header>
       <div class="quote-layout">
         <form class="quote-form" id="quote-form" novalidate>
-          <fieldset class="block">
-            <legend>1　需要哪些服務</legend>
-            <div class="svc-picks" id="svc-picks"></div>
-          </fieldset>
-          <div id="svc-fields"></div>
-          <fieldset class="block">
-            <legend>2　時程</legend>
-            <div class="row2">
-              <label class="field">最晚交件日
-                <input type="date" id="q-deadline" name="deadline">
-                <small>留空就以一般件估算完成日。</small>
-              </label>
-              <label class="field">原稿什麼時候可以給
-                <input type="date" id="q-ready" name="ready">
-                <small>留空表示已經可以開始。</small>
-              </label>
-            </div>
-          </fieldset>
-          <fieldset class="block">
-            <legend>3　聯絡資料</legend>
-            <div class="row2">
-              <label class="field">怎麼稱呼你 <span class="req">必填</span>
-                <input type="text" id="q-name" name="name" autocomplete="name" required>
-              </label>
-              <label class="field">Email <span class="req">必填</span>
-                <input type="email" id="q-email" name="email" autocomplete="email" required>
-              </label>
-              <label class="field">LINE 或其他聯絡方式
-                <input type="text" id="q-contact" name="contact">
-              </label>
-              <label class="field">書名／專案名稱
-                <input type="text" id="q-project" name="project">
-              </label>
-            </div>
-            <label class="field">稿件連結（雲端資料夾）
-              <input type="url" id="q-link" name="link" placeholder="https://">
-            </label>
-            <label class="field">其他想說的
-              <textarea id="q-note" name="note" rows="4" placeholder="例如：出版社指定的體例、是否需要發票、預計印量……"></textarea>
-            </label>
-          </fieldset>
+          <div class="quote-fields" id="quote-fields"></div>
           <!-- 防垃圾機器人：真人看不到這個欄位 -->
           <label class="hp" aria-hidden="true">網站 <input type="text" id="q-website" name="website" tabindex="-1" autocomplete="off"></label>
           <p class="form-error" id="form-error" role="alert" hidden></p>
