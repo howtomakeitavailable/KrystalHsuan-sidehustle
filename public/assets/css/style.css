@@ -599,3 +599,5 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .legend i.closed { background: repeating-linear-gradient(135deg, var(--ink-3) 0 2px, transparent 2px 4px); }
 .day.closed { background: repeating-linear-gradient(135deg, var(--surface-2) 0 6px, transparent 6px 12px); }
 .closed-tag { font-size: 11px; color: var(--ink-3); padding: 0 6px; min-height: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.choice.is-disabled { opacity: .5; cursor: not-allowed; }
+.svc-choices { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }

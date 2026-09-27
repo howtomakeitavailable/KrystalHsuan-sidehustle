@@ -14,7 +14,7 @@
   const money = (n) => P.currency + fmtNum(n);
   // 基本費 =（字數 + add）× multiply ÷ divide，四捨五入
   const baseFor = (mode, words) => { const f = mode.formula; return Math.round((words + f.add) * f.multiply / f.divide); };
-  const volumeFee = (n) => (n > 1 ? P.volumeFee.first + P.volumeFee.each * (n - 1) : 0);
+  const volumeFee = (n) => Math.max(0, n - 1) * P.volumeFee;   // 一本不收，每多拆 1 本加收
   const pct = (r) => Math.round(r * 100) + '%';
   const svcColor = (key) => `var(--svc-${key})`;
 
@@ -139,7 +139,7 @@
 
     // 價目表：兩套公式各一張
     const tw = P.tableWords;
-    const vol = `第一本 +${money(P.volumeFee.first)}，第二本起每本 +${money(P.volumeFee.each)}`;
+    const vol = `每多 1 本 +${money(P.volumeFee)}`;
     const modeBlock = (key, title, color) => {
       const m = M[key];
       const ranges = tw.slice(0, -1).map((w, i) => `<tr><td class="num">${fmtNum(w)}～${fmtNum(tw[i + 1])} 字</td><td class="r num">${money(baseFor(m, w))}～${money(baseFor(m, tw[i + 1]))}</td></tr>`).join('');
@@ -147,7 +147,7 @@
       const items = m.bundle.items;
       const rows = [
         `<tr><td>${esc(S.layout.name)}<span class="sub">${key === 'proofread' ? '校對＋排版時加收' : '必選'}</span></td><td class="r num">+${pct(m.layout)}</td></tr>`,
-        `<tr><td class="indent">拆成 2 本以上</td><td class="r num">${vol}</td></tr>`,
+        `<tr><td class="indent">拆本<span class="sub">一本不收費</span></td><td class="r num">${vol}</td></tr>`,
         ...['epub', 'print'].filter((k) => items.includes(k)).map(extra),
         `<tr><td class="indent">以上全包<span class="sub">${[S.layout.short, ...items.map((k) => S[k].short)].join('＋')}</span></td><td class="r num">共 +${pct(m.bundle.rate)}</td></tr>`,
         ...['epub', 'print'].filter((k) => !items.includes(k)).map(extra),
@@ -386,7 +386,8 @@
     both:      { label: '校對＋排版', desc: '校對完直接排版', mode: 'proofread', layout: true },
     layout:    { label: '排版', desc: '稿件已經校對好，只需要排版', mode: 'none', layout: true }
   };
-  const DEFAULTS = { words: 60000, service: 'both', extras: [], volumes: 1, region: 'north' };
+  const DEFAULTS = { words: 60000, services: ['proofread', 'layout'], volumes: 1, region: 'north' };
+  const SVC_PICKS = ['proofread', 'layout', 'epub', 'print'];   // 委託單最上面的複選
 
   function choice(name, id, label, desc, extra, checked, type = 'radio') {
     return `<label class="choice"><input type="${type}" name="${name}" value="${esc(id)}" id="${name}-${esc(id)}"${checked ? ' checked' : ''}>
@@ -408,14 +409,8 @@
           <span class="input-unit"><input type="number" id="q-words" min="1" step="1000" value="${d.words}" inputmode="numeric"><span>字</span></span>
           <small>以 Word「字數統計」的字數為準。只排版也以字數計價。</small>
         </label>
-        <div><div class="group-label">服務</div><div class="choices">
-          ${Object.entries(SERVICE_CHOICES).map(([k, c]) => {
-            const m = P.modes[c.mode];
-            return choice('q-service', k, c.label, c.desc, `基本費 ${m.formulaText}${c.layout ? `＋排版 ${pct(m.layout)}` : ''}`, d.service === k);
-          }).join('')}
-        </div></div>
-        <div id="layout-extras"><div class="group-label">搭配排版的服務</div><div class="choices">
-          ${EXTRA_KEYS.map((k) => choice('q-extra', k, S[k].name, S[k].intro, '', d.extras.includes(k), 'checkbox')).join('')}
+        <div><div class="group-label">需要哪些服務（可複選）</div><div class="choices svc-choices">
+          ${SVC_PICKS.map((k) => choice('q-svc', k, S[k].name, S[k].intro, '', d.services.includes(k), 'checkbox')).join('')}
         </div></div>
         <label class="field" id="vol-field">要拆成幾本
           <span class="input-unit"><input type="number" id="q-volumes" min="1" max="20" step="1" value="${d.volumes}" inputmode="numeric"><span>本</span></span>
@@ -490,10 +485,13 @@
       const other = $(`#spec-${sp.id}-other`);
       specs[sp.id] = v === '其他' && other && other.value.trim() ? `其他：${other.value.trim()}` : v;
     });
-    const extras = Object.fromEntries(EXTRA_KEYS.map((k) => [k, !!f.querySelector(`input[name="q-extra"][value="${k}"]:checked`)]));
+    const picked = (k) => !!f.querySelector(`input[name="q-svc"][value="${k}"]:checked`);
+    const proof = picked('proofread'), layout = picked('layout');
+    // EPUB、代印只能搭配排版
+    const extras = Object.fromEntries(EXTRA_KEYS.map((k) => [k, layout && picked(k)]));
     return {
       words: Math.max(0, Math.round(Number($('#q-words').value) || 0)),
-      service: radio('q-service') || 'both',
+      service: proof && layout ? 'both' : proof ? 'proofread' : layout ? 'layout' : null,
       extras,
       volumes: Math.max(1, Math.round(Number($('#q-volumes').value) || 1)),
       region: radio('q-region') || 'north',
@@ -517,11 +515,13 @@
   }
 
   function calculate(q) {
-    const choiceOf = SERVICE_CHOICES[q.service];
-    const mode = P.modes[choiceOf.mode];
     const lines = [];
     const problems = [];
     if (!q.words) problems.push('請填總字數');
+    if (!q.service) problems.push('請至少勾選「校對」或「實體書內頁排版」（EPUB、代印要搭配排版）');
+    if (problems.length) return { lines, problems };
+    const choiceOf = SERVICE_CHOICES[q.service];
+    const mode = P.modes[choiceOf.mode];
     if (problems.length) return { lines, problems };
 
     const base = baseFor(mode, q.words);
@@ -543,7 +543,7 @@
         lines.push({ label: S[k].name, detail: `基本費 × ${pct(mode.extras[k])}${capped ? `（上限 ${money(P.printCap)}）` : ''}`, amount: amt });
       });
       if (q.volumes > 1) {
-        lines.push({ label: `拆成 ${q.volumes} 本`, detail: `第一本 +${money(P.volumeFee.first)}，第二本起每本 +${money(P.volumeFee.each)}`, amount: volumeFee(q.volumes) });
+        lines.push({ label: `拆成 ${q.volumes} 本`, detail: `每多 1 本 +${money(P.volumeFee)}`, amount: volumeFee(q.volumes) });
       }
     }
 
@@ -581,21 +581,30 @@
   let lastQuote = null;
   function renderEstimate() {
     const q = readForm();
-    const c = SERVICE_CHOICES[q.service];
+    const c = SERVICE_CHOICES[q.service] || { label: '', mode: 'proofread', layout: false };
     const mode = P.modes[c.mode];
-    // 依選擇顯示／隱藏相關欄位
-    $('#layout-extras').hidden = !c.layout;
-    $('#vol-field').hidden = !c.layout;
-    $('#region-field').hidden = !c.layout || !q.extras.print;
-    $('#spec-block').hidden = !c.layout;
-    $('#habit-field').hidden = c.mode !== 'proofread';
-    $('#vol-hint').textContent = `拆成 2 本以上：第一本 +${money(P.volumeFee.first)}，第二本起每本 +${money(P.volumeFee.each)}。`;
-    $$('.spec-other').forEach((inp) => { inp.hidden = (($(`input[name="${inp.id.replace(/-other$/, '')}"]:checked`) || {}).value) !== '其他'; });
-    $$('input[name="q-extra"]').forEach((inp) => {
-      const k = inp.value, r = mode.extras[k];
-      const inBundle = mode.bundle.items.includes(k) ? `（${mode.bundle.items.map((x) => S[x].short).join('、')}都選，連同排版算全包 ${pct(mode.bundle.rate)}）` : '';
-      inp.closest('label').querySelector('.rate').textContent = `基本費 × ${pct(r)}${k === 'print' ? `，最多 ${money(P.printCap)}` : ''}${inBundle}`;
+    // 依選擇顯示／隱藏相關欄位；沒勾排版時，EPUB、代印不能選
+    EXTRA_KEYS.forEach((k) => {
+      const inp = $(`#q-svc-${k}`);
+      inp.disabled = !c.layout;
+      inp.closest('label').classList.toggle('is-disabled', !c.layout);
     });
+    $('#vol-field').hidden = !c.layout;
+    $('#region-field').hidden = !q.extras.print;
+    $('#spec-block').hidden = !c.layout;
+    $('#habit-field').hidden = c.mode !== 'proofread' || !q.service;
+    $('#vol-hint').textContent = `一本不收費，每多拆 1 本 +${money(P.volumeFee)}（2 本 +${money(P.volumeFee)}、3 本 +${money(P.volumeFee * 2)}）。`;
+    $$('.spec-other').forEach((inp) => { inp.hidden = (($(`input[name="${inp.id.replace(/-other$/, '')}"]:checked`) || {}).value) !== '其他'; });
+    // 每個服務旁邊顯示目前方案的算法
+    const rateText = {
+      proofread: `基本費 ${P.modes.proofread.formulaText}`,
+      layout: q.service === 'layout' ? `只排版：基本費 ${mode.formulaText}，再 +${pct(mode.layout)}` : `搭配校對：基本費 × ${pct(P.modes.proofread.layout)}`
+    };
+    EXTRA_KEYS.forEach((k) => {
+      const bundleNote = mode.bundle.items.includes(k) ? `；${mode.bundle.items.map((x) => S[x].short).join('、')}都選，連同排版算全包 ${pct(mode.bundle.rate)}` : '';
+      rateText[k] = c.layout ? `基本費 × ${pct(mode.extras[k])}${k === 'print' ? `，最多 ${money(P.printCap)}` : ''}${bundleNote}` : '需搭配排版';
+    });
+    SVC_PICKS.forEach((k) => { $(`#q-svc-${k}`).closest('label').querySelector('.rate').textContent = rateText[k]; });
     $('#deadline-hint').textContent = `${mode.rush.text}視為急件，加收總額的 ${pct(P.rushRate)}。`;
 
     const r = calculate(q);
@@ -618,7 +627,7 @@
   }
 
   function servicesText(q) {
-    const c = SERVICE_CHOICES[q.service];
+    const c = SERVICE_CHOICES[q.service] || { mode: '', layout: false };
     return [c.mode === 'proofread' ? '校對' : null, c.layout ? '排版' : null, ...(c.layout ? EXTRA_KEYS.filter((k) => q.extras[k]).map((k) => S[k].short) : [])].filter(Boolean).join('、');
   }
 
